@@ -54,26 +54,22 @@ class ONPREMUserHelper extends UserHelper {
     protected final static String TAG = "OsbdtAuth";
 
     protected ONPREMConfig config;
-    protected IdToken authToken;
-    protected IdToken accessToken;
     protected OsbdtUser user;
-    protected String refreshToken;
 
-    protected ONPREMUserHelper(@NonNull ONPREMConfig config, IdToken authToken, @NonNull IdToken accessToken, @NonNull String refreshToken, @NonNull OsbdtUser user) {
-        super();
+    protected ONPREMUserHelper(@NonNull ONPREMConfig config, @NonNull OsbdtUser user) {
+        super(user);
         this.config = config;
-        this.authToken = authToken;
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
         this.user = user;
     }
 
     @NonNull
     protected IdToken getIdTokenHelper (@NonNull boolean forceRefresh) throws OsbdtException {
         if (forceRefresh || !this.validateAccessToken()) {
-            this.refreshAccessToken();
+            refreshAccessToken();
         }
-        return this.accessToken;
+        JsonObject data = user.loadUserData();
+        String tokenStr = data.containsKey("accessToken") ? data.getString("accessToken") : "";
+        return new IdToken(tokenStr, "base");
     }
 
     @NonNull
@@ -94,9 +90,15 @@ class ONPREMUserHelper extends UserHelper {
 
         OsbdtLogger.d(TAG, "Sending request for refreshing token to osbdt");
 
+        JsonObject userData = user.loadUserData();
+        String refreshToken = userData.containsKey("refreshToken") ? userData.getString("refreshToken") : "";
+        if (refreshToken.isEmpty()) {
+            throw new OsbdtException("No refresh token available");
+        }
+
         JsonObject payload = Json.createObjectBuilder()
                 .add("grant_type", "refresh_token")
-                .add("refresh_token", this.refreshToken)
+                .add("refresh_token", refreshToken)
                 .build();
 
         HttpRequestHelper requestHelper = new HttpRequestHelper();
@@ -136,16 +138,26 @@ class ONPREMUserHelper extends UserHelper {
             JsonObject result = reader.readObject();
             reader.close();
 
-            this.accessToken = new IdToken(result.getString("access_token"), null);
-            this.refreshToken = result.getString("refresh_token");
+            String newAccessToken = result.getString("access_token");
+            String newRefreshToken = result.getString("refresh_token");
 
-            this.user.accessToken = this.accessToken;
+            JsonObject updatedData = Json.createObjectBuilder(userData)
+                .add("accessToken", newAccessToken)
+                .add("refreshToken", newRefreshToken)
+                .build();
 
-            this.user.updateUserDetailsInPreference(this.user.auth.getApp().getApplicationContext(),
-                accessToken.getToken(),
-                refreshToken);
+            // Preserve all existing user data while updating tokens
+            JsonObject preservedData = Json.createObjectBuilder()
+                .add("userEmail", userData.containsKey("userEmail") ? userData.getString("userEmail") : "")
+                .add("userDetails", userData.get("userDetails"))
+                .add("authnToken", userData.containsKey("authnToken") ? userData.get("authnToken") : JsonValue.NULL)
+                .add("accessToken", newAccessToken)
+                .add("refreshToken", newRefreshToken)
+                .build();
 
-            return this.refreshToken;
+            saveUserDetails(user.auth.getApp().getApplicationContext(), preservedData, OsbdtAuth.PREFERENCES_NAME);
+
+            return newAccessToken;
         }
 
         OsbdtLogger.e(TAG, "Failed to refresh access token for user from " +
@@ -155,7 +167,15 @@ class ONPREMUserHelper extends UserHelper {
     }
 
     protected boolean validateAccessToken() {
-        return this.accessToken.expirationTime >= Instant.now().toEpochMilli() / 1000 + 60 * 5;
+        try {
+            JsonObject data = user.loadUserData();
+            String tokenStr = data.containsKey("accessToken") ? data.getString("accessToken") : "";
+            if (tokenStr.isEmpty()) return false;
+            IdToken token = new IdToken(tokenStr, "base");
+            return token.expirationTime >= Instant.now().toEpochMilli() / 1000 + 60 * 5;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @NonNull

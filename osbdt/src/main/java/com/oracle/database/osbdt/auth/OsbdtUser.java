@@ -40,7 +40,9 @@ import com.oracle.database.osbdt.OsbdtNetworkException;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 import com.oracle.database.osbdt.task.Task;
 import com.oracle.database.osbdt.task.TaskCompletionSource;
+import com.oracle.database.osbdt.utils.SecureString;
 
+import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -64,16 +66,38 @@ public abstract class OsbdtUser implements UserInfo {
     protected String email;
     protected String photoUrl;
     protected String phoneNumber;
-    protected String accessRefreshToken;
-    protected IdToken accessToken;
-    protected String refreshAuthnToken;
-    protected String authnToken;
-    protected String idcsAccessToken;
-    protected String idcsRefreshToken;
-    protected String snapshotAccessToken;
-    protected String snapshotRefreshToken;
     protected final OsbdtAuth auth;
     protected OsbdtUser instance;
+
+    /**
+     * Loads user data from persistent storage.
+     *
+     * @return JsonObject containing user data
+     * @throws OsbdtException if loading fails
+     */
+    protected JsonObject loadUserData() throws OsbdtException {
+        return auth.authHelper.readUserDetails(
+            auth.getApp().getApplicationContext(),
+            getUid(),
+            OsbdtAuth.PREFERENCES_NAME
+        );
+    }
+
+    /**
+     * Creates a secure string from a token string.
+     *
+     * @param token the token string, may be null
+     * @return SecureString instance or null if token is null
+     */
+    private SecureString createSecureString(String token) {
+        if (token == null)
+            return null;
+        try {
+            return new SecureString(token);
+        } catch (GeneralSecurityException e) {
+            return null;
+        }
+    }
 
     /**
      * Constructs an OsbdtUser instance from the given JSON data, authentication object, and password.
@@ -90,78 +114,9 @@ public abstract class OsbdtUser implements UserInfo {
         this.auth = auth;
         this.password = password;
         if (Objects.equals(this.config.authType, "idcs")) {
-            this.idcsAccessToken = data.getString("idcsAccessToken");
-            this.idcsRefreshToken = data.getString("idcsRefreshToken");
-            this.userHelper = new IDCSUserHelper((IDCSConfig) this.config,
-                    data.containsKey("authnToken") && data.getString("authnToken") != null
-                        ? new IdToken(data.getString("authnToken"), "idcs") :
-                        null,
-                    data.getString("authnRefreshToken", null),
-                    data.containsKey("accessToken") && data.getString("accessToken") != null ?
-                        new IdToken(data.getString("accessToken"), "idcs") :
-                    null,
-                    data.getString("refreshToken"),
-                    data.containsKey("idcsAccessToken") && data.getString("idcsAccessToken") != null ?
-                        new IdToken(data.getString("idcsAccessToken"), "idcs") :
-                    null,
-                    data.getString("idcsRefreshToken"),
-                    this);
-            IdToken token = new IdToken(data.getString("accessToken"), "idcs");
-            if ( token.validateAccessToken() )
-                this.accessToken = token;
-            else {
-                try {
-                    this.accessRefreshToken = this.userHelper.refreshAccessToken();
-                } catch (Exception e) {
-                    OsbdtLogger.e(TAG, "Cannot refresh user id token because + " +
-                        e.getMessage());
-                }
-            }
-
+            this.userHelper = new IDCSUserHelper((IDCSConfig) this.config, this);
         } else {
-            this.userHelper = new ONPREMUserHelper(
-                    (ONPREMConfig) this.config,
-                    null,
-                    new IdToken(data.getString("accessToken"), "base"),
-                    data.getString("refreshToken"),
-                    this);
-            IdToken token = new IdToken(data.getString("accessToken"), "base");
-            if ( token.validateAccessToken() )
-                this.accessToken = token;
-            else {
-                try {
-                    this.accessRefreshToken = this.userHelper.refreshAccessToken();
-                } catch (Exception e) {
-                    OsbdtLogger.e(TAG, "Cannot refresh user id token because + " +
-                        e.getMessage());
-                }
-            }
-        }
-    }
-
-    protected void updateUserDetailsInPreference (@NonNull Context context,
-                                                  @NonNull String accessToken,
-                                                  @NonNull String refreshToken) {
-
-        try {
-            JsonObject userDetails = this.auth.authHelper.getUserDetails(new GetTokenResult(new IdToken(accessToken,
-                this.auth.getApp().getOptions().getAuthType())));
-            JsonObject userData = Json.createObjectBuilder()
-                .add("userEmail", userDetails.containsKey("emails") ?
-                    userDetails.getJsonArray("emails").getJsonObject(0).getString("value") :
-                    userDetails.getString("email"))
-                .add("userDetails", userDetails)
-                .add("authnToken", this.authnToken)
-                .add("authnRefreshToken", this.refreshAuthnToken)
-                .add("idcsAccessToken", this.idcsAccessToken)
-                .add("idcsRefreshToken", this.idcsRefreshToken)
-                .add("accessToken", accessToken)
-                .add("refreshToken", refreshToken)
-                .build();
-            this.userHelper.saveUserDetails(context,
-                userData, PREFERENCES_NAME);
-        } catch (Exception e) {
-            OsbdtLogger.e(TAG, "Cannot store updated user details. Following error occurred." + e.getMessage());
+            this.userHelper = new ONPREMUserHelper((ONPREMConfig) this.config, this);
         }
     }
 
@@ -208,16 +163,19 @@ public abstract class OsbdtUser implements UserInfo {
 
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
-            boolean refreshed = false;
-            if (forceRefresh || !this.userHelper.validateAccessToken()) {
-                this.userHelper.refreshAccessToken();
-                refreshed = true;
-            }
-            GetTokenResult tokenResult = new GetTokenResult(this.accessToken);
-            taskCompletionSource.setResult(tokenResult);
-            if (refreshed) {
-                this.auth.informIdTokenSubscribers();
-            }
+                if (!forceRefresh) {
+                    // Fetch access token from keystore
+                    JsonObject userData = loadUserData();
+                    String accessTokenStr = userData.getString("accessToken");
+                    IdToken accessToken = new IdToken(accessTokenStr, auth.getApp().getOptions().getAuthType());
+                    taskCompletionSource.setResult(new GetTokenResult(accessToken));
+                } else {
+                    // Fetch refresh token from keystore and refresh
+                    String newAccessTokenStr = userHelper.refreshAccessToken();
+                    IdToken newToken = new IdToken(newAccessTokenStr, auth.getApp().getOptions().getAuthType());
+                    taskCompletionSource.setResult(new GetTokenResult(newToken));
+                    this.auth.informIdTokenSubscribers();
+                }
             } catch (OsbdtException e) {
                 throw new RuntimeException(e);
             }
@@ -226,11 +184,6 @@ public abstract class OsbdtUser implements UserInfo {
         taskCompletionSource.handleFuture(future);
         return task;
 
-    }
-
-    @NonNull
-    protected String getAccessToken() {
-        return this.accessToken.getToken();
     }
 
     /**
@@ -292,21 +245,6 @@ public abstract class OsbdtUser implements UserInfo {
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
                 JsonObject res = this.userHelper.updateProfile(request);
-                this.accessRefreshToken = this.userHelper.refreshAccessToken();
-                this.accessToken = this.userHelper.getIdTokenHelper(false);
-                JsonObject userData = this.auth.authHelper.getAuthenticationDetails(email,
-                    "",
-                    Json.createObjectBuilder()
-                        .add("access_token", this.accessToken.getToken())
-                        .add("refresh_token", this.accessRefreshToken)
-                        .add("authn_token", this.authnToken)
-                        .add("authn_refresh_token", this.refreshAuthnToken)
-                        .add("idcs_access_token", this.idcsAccessToken)
-                        .add("idcs_refresh_token", this.idcsRefreshToken)
-                        .build());
-                this.auth.currentUser = new OsbdtUserImpl(userData,
-                    this.auth,
-                    "");
                 // Update Current Instance
                 this.displayName = res.containsKey("displayName") ? res.getString("displayName") : displayName;
                 this.photoUrl = res.containsKey("photos")
@@ -408,84 +346,17 @@ public abstract class OsbdtUser implements UserInfo {
         TaskCompletionSource<Void> taskCompletionSource = new TaskCompletionSource<>();
         Task<Void> task = taskCompletionSource.getTask();
 
-        CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
-            try {
-                JsonObject res = this.auth.authHelper.signInWithCredentialHelper(credential, false);
-                JsonObject userDetails = this.auth.authHelper.getUserDetails(
-                    new GetTokenResult(
-                        new IdToken(
-                            res.getString("access_token"), this.auth.getApp().getOptions().getAuthType())));
-                JsonObject userData = Json.createObjectBuilder()
-                    .add("userEmail", userDetails.containsKey("emails") ?
-                        userDetails.getJsonArray("emails").getJsonObject(0).getString("value") :
-                        userDetails.getString("email"))
-                    .add("userDetails", userDetails)
-                    .add("authnToken", JsonValue.NULL)
-                    .add("accessToken", res.getString("access_token"))
-                    .add("refreshToken", res.getString("refresh_token"))
-                    .build();
+        Task<AuthResult> authTask;
+        if (credential instanceof EmailAuthCredential) {
+            EmailAuthCredential emailCred = (EmailAuthCredential) credential;
+            authTask = this.auth.signInWithEmailAndPassword(emailCred.getEmail(), emailCred.getPassword());
+        } else {
+            authTask = this.auth.signInWithCredential(credential);
+        }
 
-                AuthResult result = new AuthResult() {
-                    @Nullable
-                    @Override
-                    public AuthCredential getCredential() {
-                        switch (credential.getProvider()) {
+        authTask.addOnSuccessListener(result -> taskCompletionSource.setResult(null));
+        authTask.addOnFailureListener(e -> taskCompletionSource.setException(e));
 
-                            case "google.com":
-                                return new GoogleAuthCredential(
-                                    credential.getProvider(),
-                                    credential.getSignInMethod(),
-                                    res.getString("accessToken")
-                                );
-
-                            case "github.com":
-                                return new GithubAuthCredential(
-                                    credential.getProvider(),
-                                    credential.getSignInMethod(),
-                                    res.getString("accessToken")
-                                );
-
-                            case "facebook.com":
-                                return new FacebookAuthCredential(
-                                    credential.getProvider(),
-                                    credential.getSignInMethod(),
-                                    res.getString("accessToken")
-                                );
-
-                            default:
-                                return null;
-                        }
-                    }
-
-                    @Nullable
-                    @Override
-                    public OsbdtUser getUser() {
-                        return new OsbdtUserImpl(userData,
-                            auth.authHelper.getOsbdtAuth(),
-                            "");
-                    }
-                };
-
-                OsbdtLogger.d("SocialAuth", "Stored user data from signInWithCredential");
-
-                this.auth.authHelper.saveUserDetails(this.auth.getApp().getApplicationContext(),
-                    userData, PREFERENCES_NAME);
-
-                taskCompletionSource.setResult(null);
-                this.auth.informAuthSubscribers();
-                this.auth.informIdTokenSubscribers();
-
-            } catch (Exception e) {
-                OsbdtLogger.e(TAG, "Exception encountered while performing signInWithCredential operation");
-                Exception exception = e;
-                if(!(exception instanceof OsbdtOracledbException))
-                    exception = new OsbdtNetworkException(exception.getMessage() == null ?
-                        "Internal Error Occurred" : exception.getMessage());
-                throw new CompletionException(exception);
-            }
-            return "";
-        });
-        taskCompletionSource.handleFuture(future);
         return task;
     }
 
@@ -497,7 +368,12 @@ public abstract class OsbdtUser implements UserInfo {
      */
     @NonNull
     public Task<AuthResult> reauthenticateAndRetrieveData (@NonNull AuthCredential credential) {
-        return this.auth.signInWithCredential(credential);
+        if (credential instanceof EmailAuthCredential) {
+            EmailAuthCredential emailCred = (EmailAuthCredential) credential;
+            return this.auth.signInWithEmailAndPassword(emailCred.getEmail(), emailCred.getPassword());
+        } else {
+            return this.auth.signInWithCredential(credential);
+        }
     }
 
     /**

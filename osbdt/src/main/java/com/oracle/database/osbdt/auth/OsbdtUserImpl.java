@@ -31,6 +31,8 @@ import android.os.Parcel;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.oracle.database.osbdt.OsbdtException;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -60,7 +62,6 @@ class OsbdtUserImpl extends OsbdtUser {
 
         JsonObject userDetails = Data.getJsonObject("userDetails");
 
-        this.accessRefreshToken = Data.getString("refreshToken");
         this.email = userDetails.containsKey("email")
             ? userDetails.getString("email")
             : Data.getString("userEmail");
@@ -160,17 +161,12 @@ class OsbdtUserImpl extends OsbdtUser {
 
     @NonNull
     protected String getRefreshToken() {
-        return this.accessRefreshToken;
-    }
-
-    @NonNull
-    protected String getAuthnRefreshToken () {
-        return this.refreshAuthnToken;
-    }
-
-    @NonNull
-    protected String getAuthnToken () {
-        return this.authnToken;
+        try {
+            JsonObject data = loadUserData();
+            return data.containsKey("refreshToken") ? data.getString("refreshToken") : "";
+        } catch (OsbdtException e) {
+            return "";
+        }
     }
 
     @Nullable

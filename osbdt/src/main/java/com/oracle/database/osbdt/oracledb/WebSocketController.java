@@ -329,98 +329,34 @@ class WebSocketController {
     }
 
     /**
-     * Retrieves the access token for the current user.
+     * Builds the Authorization header with access token.
+     * Decrypts token inline to minimize memory exposure.
      *
-     * @return the access token string
-     * @throws OsbdtOracledbException if the token cannot be retrieved
+     * @return Complete Authorization header string or empty string if unavailable
+     * @throws OsbdtOracledbException if token retrieval fails
      */
     @NonNull
-    private String getAccessToken() throws OsbdtOracledbException {
+    private String buildAuthorizationHeader() throws OsbdtOracledbException {
 
-        String accessToken;
-
-        OsbdtAuth auth = OsbdtAuth.getInstance(this.oracledb.getApp());
-        OsbdtUser user = auth.getCurrentUser();
-        if (user != null) {
-            if (auth.getApp().osbdtOptions.getAuthType().equals("idcs")) {
-                String key = "";
-                try {
-                    key = Utils.getPreferenceData(this.oracledb.getApp().getApplicationContext(),
-                        "LOGGED_IN_USER",
+        try {
+            String key = Utils.getPreferenceData(this.oracledb.getApp().getApplicationContext(),
+                    "LOGGED_IN_USER",
+                    "OsbdtPreferences");
+            if (key != null && !key.isEmpty()) {
+                // Load the user details JSON object and extract the access token
+                JsonObject userDetails = Utils.loadJsonObjectFromPreferences(
+                        this.oracledb.getApp().getApplicationContext(),
+                        key,
                         "OsbdtPreferences");
-                } catch (Exception e) {
-                    OsbdtLogger.d("Oradb", "Cannot get signed in user details");
-                    throw new OsbdtOracledbException("Cannot get user details", OsbdtOracledbException.Code.INTERNAL);
-                }
-
-                if(key.isEmpty())
-                {
-                    OsbdtLogger.d(TAG, "Cannot get signed in user details");
-                    throw new OsbdtOracledbException("Cannot get user details", OsbdtOracledbException.Code.UNAUTHENTICATED);
-                }
-
-                try {
-                    // Load the user details JSON object and extract the access token
-                    JsonObject userDetails = Utils.loadJsonObjectFromPreferences(
-                            this.oracledb.getApp().getApplicationContext(),
-                            key,
-                            "OsbdtPreferences");
-                    if (userDetails.containsKey("idcsAccessToken")) {
-                        accessToken = userDetails.getString("idcsAccessToken");
-                        if (accessToken != null && !accessToken.isEmpty()) {
-                            return accessToken;
-                        }
-                    }
-                } catch (Exception e) {
-                    OsbdtLogger.w(TAG, "Cannot get idcs access token from preferences, falling back to current user: " + e.getMessage());
-                    // Fall back to getting token from current user object
-                    try {
-                        Task<GetTokenResult> tokenTask = auth.getCurrentUser().getIdToken(false);
-                        GetTokenResult tokenResult = Tasks.await(tokenTask);
-                        String token = tokenResult.getToken();
-                        if (token != null && !token.isEmpty()) {
-                            return token;
-                        }
-                    } catch (Exception ex) {
-                        OsbdtLogger.w(TAG, "Cannot get access token from current user: " + ex.getMessage());
-                    }
-                }
-
-            } else {
-                try {
-                    String key = Utils.getPreferenceData(this.oracledb.getApp().getApplicationContext(),
-                        "LOGGED_IN_USER",
-                        "OsbdtPreferences");
-                    if (key != null && !key.isEmpty()) {
-                        // Load the user details JSON object and extract the access token
-                        JsonObject userDetails = Utils.loadJsonObjectFromPreferences(
-                                this.oracledb.getApp().getApplicationContext(),
-                                key,
-                                "OsbdtPreferences");
-                        if (userDetails.containsKey("accessToken")) {
-                            accessToken = userDetails.getString("accessToken");
-                            if (accessToken != null && !accessToken.isEmpty()) {
-                                return accessToken;
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    OsbdtLogger.w(TAG, "Cannot get access token from preferences, falling back to current user: " + e.getMessage());
-                    // Fall back to getting token from current user object
-                    try {
-                        Task<GetTokenResult> tokenTask = auth.getCurrentUser().getIdToken(false);
-                        GetTokenResult tokenResult = Tasks.await(tokenTask);
-                        String token = tokenResult.getToken();
-                        if (token != null && !token.isEmpty()) {
-                            return token;
-                        }
-                    } catch (Exception ex) {
-                        OsbdtLogger.w(TAG, "Cannot get access token from current user: " + ex.getMessage());
-                    }
+                if (userDetails.containsKey("accessToken")) {
+                    return "Bearer " + userDetails.getString("accessToken");
                 }
             }
+        } catch (Exception e) {
+            OsbdtLogger.w("QueryHelper", "Cannot get access token from current user: " + e.getMessage());
         }
 
+        OsbdtLogger.w("QueryHelper", "No access token available");
         return "";
     }
 
@@ -429,19 +365,13 @@ class WebSocketController {
 
         // Populate headers
         Map<String, String> headers = new HashMap<>();
-        String userAccessToken;
 
-        try {
-            userAccessToken = this.getAccessToken();
-            if(userAccessToken.isEmpty() || !Utils.isTokenValid(userAccessToken))
-                throw new IllegalArgumentException("No logged in user exists");
-        } catch (Exception e) {
-            OsbdtLogger.d(TAG, "Cannot retrieve accessToken. Please ensure you are logged " +
-                "in first in order to use Snapshot feature");
+        String authHeader = this.buildAuthorizationHeader();
+        if (authHeader.isEmpty()) {
             throw new OsbdtOracledbException("User Not logged in", OsbdtOracledbException.Code.UNAUTHENTICATED);
         }
 
-        headers.put("Authorization", "Bearer " + userAccessToken);
+        headers.put("Authorization", authHeader);
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.oracledb.getOradbSettings().getOptions().getAppId());
@@ -485,19 +415,15 @@ class WebSocketController {
     }
 
     private JsonObject getIDCSSnapshotToken() throws OsbdtOracledbException {
-
-        String userAccessToken = "";
-        try {
-            userAccessToken = this.getAccessToken();
-            if(userAccessToken.isEmpty() || Utils.isTokenValid(userAccessToken))
-                throw new IllegalArgumentException("No logged in user exists");
-        } catch (Exception e) {
-            OsbdtLogger.d(TAG, "Cannot retrieve accessToken. Please ensure you are logged " +
-                "in first in order to use Snapshot feature");
+        String authHeader = this.buildAuthorizationHeader();
+        if (authHeader.isEmpty()) {
             throw new OsbdtOracledbException("User Not logged in", OsbdtOracledbException.Code.UNAUTHENTICATED);
         }
+
+        // Extract token from "Bearer <token>" format
+        String accessToken = authHeader.substring(7); // Remove "Bearer " prefix
         return Json.createObjectBuilder()
-            .add("access_token",this.getAccessToken())
+            .add("access_token", accessToken)
             .build();
     }
 

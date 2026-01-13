@@ -113,6 +113,24 @@ public class EmailAuthCredential extends AuthCredential{
         return this.signInMethod;
     }
 
+    /**
+     * Method to get the email of the EmailAuthCredential
+     * @return {@code String}
+     */
+    @NonNull
+    public String getEmail() {
+        return this.email;
+    }
+
+    /**
+     * Method to get the password of the EmailAuthCredential
+     * @return {@code String}
+     */
+    @Nullable
+    public String getPassword() {
+        return this.password;
+    }
+
     @NonNull
     @Override
     protected String getIdToken() {
@@ -140,6 +158,5 @@ public class EmailAuthCredential extends AuthCredential{
         parcel.writeString(provider);
         parcel.writeString(signInMethod);
         parcel.writeString(email);
-        // Not sending password via parcel
     }
 }

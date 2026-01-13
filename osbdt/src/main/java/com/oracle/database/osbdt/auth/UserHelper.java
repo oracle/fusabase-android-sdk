@@ -44,6 +44,12 @@ import jakarta.json.JsonObject;
 
 abstract class UserHelper {
     private final String TAG = "OsbdtAuth";
+    protected final OsbdtUser user;
+
+    protected UserHelper(@NonNull OsbdtUser user) {
+        this.user = user;
+    }
+
     protected  void saveUserDetails (@NonNull Context context,
                                      @NonNull JsonObject userDetails,
                                      @NonNull String prefsName) throws OsbdtException {
@@ -107,5 +113,21 @@ abstract class UserHelper {
 
     @NonNull
     protected abstract JsonObject reauthenticateAndRetrieveDataHelper(OsbdtUser osbdtUser, AuthCredential credential);
+
+    /**
+     * Builds the Authorization header with access token from persistent storage.
+     * The token goes out of scope immediately after use for security.
+     *
+     * @return Complete Authorization header string or empty string if unavailable
+     */
+    protected String getAuthorizationHeader() {
+        try {
+            JsonObject data = user.loadUserData();
+            String token = data.containsKey("accessToken") ? data.getString("accessToken") : "";
+            return token.isEmpty() ? "" : "Bearer " + token;
+        } catch (OsbdtException e) {
+            return "";
+        }
+    }
 
 }

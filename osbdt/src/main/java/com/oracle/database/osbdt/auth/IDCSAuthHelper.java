@@ -54,6 +54,7 @@ import com.oracle.database.osbdt.utils.Utils;
 import java.io.StringReader;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -156,7 +157,6 @@ class IDCSAuthHelper extends AuthHelper {
                         AUTHENTICATE_PATH),
                 "GET",
                 headers);
-
 
         HttpResponse response = null;
 
@@ -299,14 +299,13 @@ class IDCSAuthHelper extends AuthHelper {
         headers.put("Authorization", String.format("Bearer %s", bearerToken.getToken()));
 
         requestHelper.createHttpRequest(Utils.urlBuilder(this.config.idcsDomainURL,
-                        SSO_PATH,
-                        V1_PATH,
-                        SDK_PATH,
-                        AUTHENTICATE_PATH),
+                SSO_PATH,
+                V1_PATH,
+                SDK_PATH,
+                AUTHENTICATE_PATH),
                 "POST",
                 headers,
                 payload.toString());
-
 
         HttpResponse response = null;
 
@@ -318,21 +317,21 @@ class IDCSAuthHelper extends AuthHelper {
                 OsbdtLogger.d(TAG, "Successfully authenticated user " + email + " from idcs.");
                 reader.close();
 
-                JsonObject profileCredentials = this.getAccessToken(new IdToken(result.getString("authnToken"), "password"),
-                        result.getString("refresh_token"));
+                JsonObject profileCredentials = this.getAccessToken(
+                        new IdToken(result.getString("authnToken"), "password"));
 
                 return this.getOsbdtToken(result, profileCredentials);
             } else {
                 OsbdtLogger.e(TAG, "Invalid response received with response code " +
-                    response.getCode() + " with following error " + response.getError());
+                        response.getCode() + " with following error " + response.getError());
                 throw new OsbdtException(response.getError());
             }
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
             Exception exception = e;
-            if(!(exception instanceof OsbdtOracledbException))
-                exception = new OsbdtNetworkException(exception.getMessage() == null ?
-                    "Internal Error Occurred" : exception.getMessage());
+            if (!(exception instanceof OsbdtOracledbException))
+                exception = new OsbdtNetworkException(
+                        exception.getMessage() == null ? "Internal Error Occurred" : exception.getMessage());
             throw new CompletionException(exception);
         }
     }
@@ -341,24 +340,21 @@ class IDCSAuthHelper extends AuthHelper {
         return token.expirationTime >= Instant.now().toEpochMilli() / 1000 + 60 * 5;
     }
 
-    protected JsonObject getSnapshotAccessToken(@NonNull IdToken authnToken,
-                                                @NonNull String authnRefreshToken) throws OsbdtException {
+    protected JsonObject getSnapshotAccessToken(@NonNull IdToken authnToken) throws OsbdtException {
         if(!this.validateAccessToken(authnToken)){
             throw new OsbdtException("User not recently logged in to perform Snapshot with IDCS.");
         }
-        return this.getAccessTokenWithScope(authnToken, authnRefreshToken, IDCS_SNAPSHOT_SCOPE);
+        return this.getAccessTokenWithScope(authnToken, IDCS_SNAPSHOT_SCOPE);
     }
 
-    protected JsonObject getAccessToken (@NonNull IdToken authnToken,
-                                         @NonNull String authnRefreshToken) throws OsbdtException {
+    protected JsonObject getAccessToken (@NonNull IdToken authnToken) throws OsbdtException {
         if(!this.validateAccessToken(authnToken)){
             throw new OsbdtException("User not recently logged in to perform Snapshot with IDCS.");
         }
-        return this.getAccessTokenWithScope(authnToken, authnRefreshToken, IDCS_ACCESS_SCOPE);
+        return this.getAccessTokenWithScope(authnToken, IDCS_ACCESS_SCOPE);
     }
 
     protected JsonObject getAccessTokenWithScope(@NonNull IdToken authnToken,
-                                                 @NonNull String authnRefreshToken,
                                                  @NonNull String scope) {
 
         OsbdtLogger.d(TAG, "Sending request to authenticate user from idcs.");
@@ -571,8 +567,8 @@ class IDCSAuthHelper extends AuthHelper {
                         .build())
                 .add("urn:ietf:params:scim:schemas:oracle:idcs:extension:selfRegistration:User",
                         Json.createObjectBuilder().add("selfRegistrationProfile",
-                                        Json.createObjectBuilder().add("value", this.config.selfRegistrationProfile)
-                                                .build())
+                                Json.createObjectBuilder().add("value", this.config.selfRegistrationProfile)
+                                        .build())
                                 .add("consentGranted", true)
                                 .build())
                 .build();
@@ -583,9 +579,9 @@ class IDCSAuthHelper extends AuthHelper {
         headers.put("Authorization", String.format("Bearer %s", bearerToken.getToken()));
 
         requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getIdcsDomainURL(),
-                        ADMIN_PATH,
-                        V1_PATH,
-                        ME_PATH),
+                ADMIN_PATH,
+                V1_PATH,
+                ME_PATH),
                 "POST",
                 headers,
                 payload.toString());
@@ -598,7 +594,6 @@ class IDCSAuthHelper extends AuthHelper {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
             throw new OsbdtNetworkException("Network error encountered due to " + e.getCause());
         }
-
 
         if (response.getStatus()) {
             OsbdtLogger.i(TAG, "Registered user successfully a idcs.");
@@ -651,8 +646,13 @@ class IDCSAuthHelper extends AuthHelper {
 
         if (response.getStatus()) {
             OsbdtLogger.i(TAG, "Signed out user from idcs successfully.");
-            this.revokeRefreshToken(this.auth.getCurrentUser().accessRefreshToken);
-            this.revokeRefreshToken(this.auth.getCurrentUser().idcsRefreshToken);
+            try {
+                JsonObject data = this.auth.getCurrentUser().loadUserData();
+                this.revokeRefreshToken(data.getString("refreshToken"));
+                this.revokeRefreshToken(data.getString("idcsRefreshToken"));
+            } catch (OsbdtException e) {
+                OsbdtLogger.e(TAG, "Cannot load user data for revoke: " + e.getMessage());
+            }
             form = response.getResponse();
             return Json.createObjectBuilder().add("success", 1)
                     .add("form", form)

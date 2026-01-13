@@ -27,11 +27,16 @@
 package com.oracle.database.osbdt.auth;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import com.oracle.database.osbdt.OsbdtException;
+import com.oracle.database.osbdt.logger.OsbdtLogger;
+import com.oracle.database.osbdt.utils.SecureString;
 import com.oracle.database.osbdt.utils.Utils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.GeneralSecurityException;
 import java.time.Instant;
 
 import jakarta.json.Json;
@@ -39,7 +44,7 @@ import jakarta.json.JsonObject;
 
 class IdToken {
 
-    private String token;
+    private SecureString secureToken;
     protected long issuedAtTime;
     protected long expirationTime;
     protected String signInProvider;
@@ -50,7 +55,11 @@ class IdToken {
     protected IdToken(@NonNull String token, String provider) {
 
         provider = provider == null ? "password" : provider;
-        this.token = token;
+        try {
+            this.secureToken = new SecureString(token);
+        } catch (GeneralSecurityException e) {
+            OsbdtLogger.e("OsbdtAuth", "Cannot process user credentials.");
+        }
         this.parsedJWT = (JsonObject) Utils.parseJWT(token);
         this.issuedAtTime = new BigDecimal(this.parsedJWT.getJsonNumber("iat").toString()).setScale(0, RoundingMode.HALF_UP).longValue();
         this.expirationTime = new BigDecimal(this.parsedJWT.getJsonNumber("exp").toString()).setScale(0, RoundingMode.HALF_UP).longValue();
@@ -70,7 +79,31 @@ class IdToken {
     }
 
     protected String getToken() {
-        this.token = (this.validateAccessToken() ? token : "");
-        return this.token;
+        if (!this.validateAccessToken()) {
+            return "";
+        }
+        return this.secureToken.getDecryptedString();
+    }
+
+    /**
+     * Gets the token as char array for secure usage. The caller must clear the array after use.
+     *
+     * @return The token as char array, or null if decryption fails
+     */
+    @Nullable
+    protected char[] getTokenChars() {
+        if (!this.validateAccessToken()) {
+            return new char[0];
+        }
+        return this.secureToken.getDecryptedChars();
+    }
+
+    /**
+     * Clears the secure token from memory when no longer needed.
+     */
+    protected void clearToken() {
+        if (this.secureToken != null) {
+            this.secureToken.clear();
+        }
     }
 }

@@ -35,7 +35,7 @@ import com.oracle.database.osbdt.utils.Utils;
  * Represents a Facebook authentication provider.
  * <p>
  * This class extends the AuthProvider abstract class and provides additional functionality for handling Facebook authentication.
- *</p>
+ * </p>
  */
 public class FacebookAuthProvider extends AuthProvider {
 
@@ -83,19 +83,18 @@ public class FacebookAuthProvider extends AuthProvider {
     }
 
     /**
-     * Helps in creating an AuthCredential from the Facebook ID Token.
+     * Helps in creating an AuthCredential from the Facebook access token.
      *
-     * @param idToken {@code String} ID Token
-     * @param accessToken {@code String}  AccessToken
+     * @param accessToken {@code String} access token
      * @return AuthCredential for the provided token
      */
     @NonNull
-    public static AuthCredential getCredential(@Nullable String idToken, @Nullable String accessToken)
+    public static AuthCredential getCredential(@NonNull String accessToken)
        throws IllegalArgumentException{
 
-            if(idToken == null && accessToken == null)
-                throw new IllegalArgumentException("Either IdToken or AccessToken must be non null.");
-        return new FacebookAuthCredential(PROVIDER_ID, FACEBOOK_SIGN_IN_METHOD, idToken);
+            if(accessToken == null)
+                throw new IllegalArgumentException("AccessToken must be non null.");
+        return new FacebookAuthCredential(PROVIDER_ID, FACEBOOK_SIGN_IN_METHOD, accessToken);
 
     }
 }

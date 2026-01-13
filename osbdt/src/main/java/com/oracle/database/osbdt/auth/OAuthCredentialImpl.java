@@ -31,6 +31,10 @@ import android.os.Parcel;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.oracle.database.osbdt.utils.SecureString;
+
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.Objects;
 
 class OAuthCredentialImpl extends OAuthCredential {
@@ -51,8 +55,8 @@ class OAuthCredentialImpl extends OAuthCredential {
     };
 
     private final String providerId;
-    private final String accessToken;
-    private final String idToken;
+    private final SecureString secureAccessToken;
+    private final SecureString secureIdToken;
     private final String nonce;
 
     public OAuthCredentialImpl (@NonNull String providerId,
@@ -60,9 +64,17 @@ class OAuthCredentialImpl extends OAuthCredential {
                                 @Nullable String idToken,
                                 @Nullable String nonce) {
         this.providerId = providerId;
-        this.accessToken = accessToken;
-        this.idToken = idToken;
+        this.secureAccessToken = accessToken != null ? createSecureString(accessToken) : null;
+        this.secureIdToken = idToken != null ? createSecureString(idToken) : null;
         this.nonce = nonce;
+    }
+
+    private SecureString createSecureString(String token) {
+        try {
+            return new SecureString(token);
+        } catch (GeneralSecurityException ex) {
+            return null;
+        }
     }
 
     /**
@@ -72,21 +84,21 @@ class OAuthCredentialImpl extends OAuthCredential {
      */
     protected OAuthCredentialImpl(Parcel in) {
         this.providerId = Objects.requireNonNull(in.readString());
-        this.accessToken = null;
-        this.idToken = null;
+        this.secureAccessToken = null;
+        this.secureIdToken = null;
         this.nonce = null;
     }
 
     @Nullable
     @Override
     public String getAccessToken() {
-        return this.accessToken;
+        return this.secureAccessToken != null ? this.secureAccessToken.getDecryptedString() : null;
     }
 
     @Nullable
     @Override
     public String getIdToken() {
-        return this.idToken;
+        return this.secureIdToken != null ? this.secureIdToken.getDecryptedString() : null;
     }
 
     // Will always be null
@@ -118,5 +130,4 @@ class OAuthCredentialImpl extends OAuthCredential {
     public void writeToParcel(@NonNull Parcel parcel, int i) {
         return;
     }
-
 }

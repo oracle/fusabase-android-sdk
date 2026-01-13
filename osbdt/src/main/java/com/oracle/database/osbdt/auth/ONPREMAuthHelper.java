@@ -37,6 +37,7 @@ import com.oracle.database.osbdt.utils.Utils;
 
 import java.io.StringReader;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -242,7 +243,10 @@ class ONPREMAuthHelper extends AuthHelper {
                     "User must be recently logged in for linking with provider.");
             }
 
-            headers.put("Authorization", "Bearer " + this.auth.getCurrentUser().accessToken);
+            String authHeader = this.auth.getCurrentUser().userHelper.getAuthorizationHeader();
+            if (!authHeader.isEmpty()) {
+                headers.put("Authorization", authHeader);
+            }
         }
 
         JsonObject payload = Json.createObjectBuilder()
@@ -323,7 +327,10 @@ class ONPREMAuthHelper extends AuthHelper {
                     "User must be recently logged in for linking with provider.");
         }
 
-        headers.put("Authorization", "Bearer " + this.auth.getCurrentUser().accessToken);
+        String authHeader = this.auth.getCurrentUser().userHelper.getAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         HttpRequestHelper requestHelper = new HttpRequestHelper();
 
@@ -461,6 +468,7 @@ class ONPREMAuthHelper extends AuthHelper {
         {
             throw new OsbdtAuthWeakPasswordException("Weak Password", response.getError());
         }
+        
         OsbdtLogger.e(TAG, "Failed to register user at" +
                 " osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());

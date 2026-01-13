@@ -222,61 +222,34 @@ class QueryHelper {
     }
 
     /**
-     * Retrieves the access token for authenticated requests.
+     * Builds the Authorization header with access token.
+     * Decrypts token inline to minimize memory exposure.
      *
-     * @return the access token or empty string if not available
-     * @throws OsbdtOracledbException if unable to retrieve user details
+     * @return Complete Authorization header string or empty string if unavailable
      */
     @NonNull
-    private String getAccessToken() throws OsbdtOracledbException {
+    private String buildAuthorizationHeader() {
+
         try {
-            OsbdtAuth auth = OsbdtAuth.getInstance(this.oradb.getApp());
-            if (auth.getCurrentUser() == null) {
-                return "";
-            }
-
-            // Try to get access token from preferences first
-            try {
-                String key = Utils.getPreferenceData(this.oradb.getApp().getApplicationContext(),
-                        "LOGGED_IN_USER",
+            String key = Utils.getPreferenceData(this.oradb.getApp().getApplicationContext(),
+                    "LOGGED_IN_USER",
+                    "OsbdtPreferences");
+            if (key != null && !key.isEmpty()) {
+                // Load the user details JSON object and extract the access token
+                JsonObject userDetails = Utils.loadJsonObjectFromPreferences(
+                        this.oradb.getApp().getApplicationContext(),
+                        key,
                         "OsbdtPreferences");
-                if (key != null && !key.isEmpty()) {
-                    // Load the user details JSON object and extract the access token
-                    JsonObject userDetails = Utils.loadJsonObjectFromPreferences(
-                            this.oradb.getApp().getApplicationContext(),
-                            key,
-                            "OsbdtPreferences");
-                    if (userDetails.containsKey("accessToken")) {
-                        String accessToken = userDetails.getString("accessToken");
-                        if (accessToken != null && !accessToken.isEmpty()) {
-                            return accessToken;
-                        }
-                    }
+                if (userDetails.containsKey("accessToken")) {
+                    return "Bearer " + userDetails.getString("accessToken");
                 }
-            } catch (Exception e) {
-                OsbdtLogger.w("QueryHelper", "Cannot get access token from preferences, falling back to current user: " + e.getMessage());
             }
-
-            // Fall back to getting token from current user object
-            try {
-                Task<GetTokenResult> tokenTask = auth.getCurrentUser().getIdToken(false);
-                GetTokenResult tokenResult = Tasks.await(tokenTask);
-                String token = tokenResult.getToken();
-                if (token != null && !token.isEmpty()) {
-                    return token;
-                }
-            } catch (Exception e) {
-                OsbdtLogger.w("QueryHelper", "Cannot get access token from current user: " + e.getMessage());
-            }
-
-            OsbdtLogger.w("QueryHelper", "No access token available");
-            return "";
-
         } catch (Exception e) {
-            OsbdtLogger.e("QueryHelper", "Cannot get signed in user details: " + e.getMessage());
-            throw new OsbdtOracledbException("Cannot get user details: " + e.getMessage(),
-                    OsbdtOracledbException.Code.INTERNAL, e);
+            OsbdtLogger.w("QueryHelper", "Cannot get access token from current user: " + e.getMessage());
         }
+
+        OsbdtLogger.w("QueryHelper", "No access token available");
+        return "";
     }
 
     /**
@@ -661,10 +634,9 @@ class QueryHelper {
                 operation.getTransactionName()).toString());
         headers.put("Content-Type", "application/json");
 
-        String userAccessToken = this.getAccessToken();
-
-        if (!userAccessToken.isEmpty()) {
-            headers.put("Authorization", "Bearer " + userAccessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
         }
 
         Map<String, String> queryParameters = new HashMap<>();
@@ -738,10 +710,9 @@ class QueryHelper {
                 operation.getTransactionName()).toString());
         headers.put("Content-Type", "application/json");
 
-        String userAccessToken = this.getAccessToken();
-
-        if (!userAccessToken.isEmpty()) {
-            headers.put("Authorization", "Bearer " + userAccessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
         }
 
         Map<String, String> queryParameters = new HashMap<>();
@@ -824,8 +795,6 @@ class QueryHelper {
 
         HttpRequestHelper requestHelper = new HttpRequestHelper(maxReattempt);
 
-        String userAccessToken = this.getAccessToken();
-
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
 
@@ -885,7 +854,6 @@ class QueryHelper {
                 throw new OsbdtException("Invalid Data provided to set()");
             }
             payloadBuilder.add("data", preparedBody);
-            payloadBuilder.add("servertimestamp", documentData.asJsonObject().get("servertimestamp"));
         }
 
         if (setOptions != null && Objects.equals(API_VERSION, "2.0"))
@@ -908,8 +876,9 @@ class QueryHelper {
                 operation.getTransactionName()).toString());
         headers.put("Content-Type", "application/json");
 
-        if (!userAccessToken.isEmpty()) {
-            headers.put("Authorization", "Bearer " + userAccessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
         }
 
         // Create the request
@@ -980,8 +949,6 @@ class QueryHelper {
 
         HttpRequestHelper requestHelper = new HttpRequestHelper(maxReattempt);
 
-        String userAccessToken = this.getAccessToken();
-
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
 
@@ -1015,7 +982,6 @@ class QueryHelper {
             payloadBuilder.add("data", preparedBody.asJsonObject().get("processedData"));
         else {
             payloadBuilder.add("data", preparedBody);
-            payloadBuilder.add("servertimestamp", documentData.asJsonObject().get("servertimestamp"));
         }
 
         if (Objects.equals(API_VERSION, "2.0"))
@@ -1040,8 +1006,9 @@ class QueryHelper {
                 operation.getTransactionName()).toString());
         headers.put("Content-Type", "application/json");
 
-        if (!userAccessToken.isEmpty()) {
-            headers.put("Authorization", "Bearer " + userAccessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
         }
 
         // Construct request body

@@ -34,8 +34,11 @@ import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 
@@ -48,24 +51,22 @@ import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -73,18 +74,9 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 import jakarta.json.Json;
-import jakarta.json.JsonArray;
-import jakarta.json.JsonArrayBuilder;
-import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonReader;
-import jakarta.json.JsonString;
 import jakarta.json.JsonStructure;
-import jakarta.json.JsonValue;
-
-import android.security.keystore.KeyGenParameterSpec;
-import android.security.keystore.KeyProperties;
 
 public class Utils {
 
@@ -482,6 +474,29 @@ public class Utils {
             OsbdtLogger.e("Unable to parse the JWT token, the following exception occured " +
                     e.getMessage());
             throw new RuntimeException("Failed to parse JWT", e);
+        }
+    }
+
+    /**
+     * Securely clears a char array by overwriting its contents.
+     * Use this for sensitive data like passwords to prevent heap dump exposure.
+     *
+     * @param array The char array to clear
+     */
+    public static void clearCharArray(@Nullable char[] array) {
+        if (array != null) {
+            Arrays.fill(array, '\0');
+        }
+    }
+
+    /**
+     * Securely clears a StringBuilder by overwriting and clearing its contents.
+     *
+     * @param builder The StringBuilder to clear
+     */
+    public static void clearStringBuilder(@Nullable StringBuilder builder) {
+        if (builder != null) {
+            builder.setLength(0);
         }
     }
 

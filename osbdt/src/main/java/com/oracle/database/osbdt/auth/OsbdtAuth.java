@@ -71,19 +71,6 @@ public class OsbdtAuth {
     private final Config config;
 
     /**
-     * Custom authentication domain.
-     */
-    public String customAuthDomain;
-    /**
-     * Tenant ID.
-     */
-    public String tenantId;
-    /**
-     * Language code.
-     */
-    public String languageCode;
-
-    /**
      * Currently signed-in user.
      */
     public @Nullable OsbdtUser currentUser;
@@ -381,63 +368,6 @@ public class OsbdtAuth {
             OsbdtLogger.d(TAG, "removeIdTokenListener executed successfully.");
         else
             OsbdtLogger.d(TAG, "Provided IdTokenListener is not registered. No listener to remove.");
-    }
-
-    /**
-     * Sets the language code.
-     *
-     * @param languageCode New language code.
-     */
-    public void setLanguageCode(@NonNull String languageCode) {
-        this.languageCode = languageCode;
-    }
-
-    /**
-     * Gets the language code.
-     *
-     * @return Current language code, or null if none.
-     */
-    @Nullable
-    public String getLanguageCode() {
-        return this.languageCode;
-    }
-
-    /**
-     * Sets the tenant ID.
-     *
-     * @param tenantId New tenant ID.
-     */
-    public void setTenantId(@NonNull String tenantId) {
-        this.tenantId = tenantId;
-    }
-
-    /**
-     * Gets the tenant ID.
-     *
-     * @return Current tenant ID, or null if none.
-     */
-    @Nullable
-    public  String getTenantId() {
-        return this.tenantId;
-    }
-
-    /**
-     * Sets the custom authentication domain.
-     *
-     * @param customAuthDomain New custom authentication domain.
-     */
-    public void setCustomAuthDomain(@NonNull String customAuthDomain) {
-        this.customAuthDomain = customAuthDomain;
-    }
-
-    /**
-     * Gets the custom authentication domain.
-     *
-     * @return Current custom authentication domain, or null if none.
-     */
-    @Nullable
-    public String getCustomAuthDomain() {
-        return this.customAuthDomain;
     }
 
     /**
@@ -749,6 +679,7 @@ public class OsbdtAuth {
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
 
             try {
+
                 JsonObject res = this.authHelper.authenticateUser(email, password);
                 JsonObject userData = this.authHelper.getAuthenticationDetails(email, password, res);
                 AuthResult result = new AuthResult() {
@@ -778,6 +709,7 @@ public class OsbdtAuth {
                 taskCompletionSource.setResult(result);
                 this.informAuthSubscribers();
                 this.informIdTokenSubscribers();
+
             } catch (OsbdtException e) {
                 throw new RuntimeException(e);
             }

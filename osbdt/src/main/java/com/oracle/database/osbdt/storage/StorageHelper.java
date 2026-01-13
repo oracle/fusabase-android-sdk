@@ -35,8 +35,6 @@ import androidx.annotation.Nullable;
 import com.oracle.database.osbdt.OsbdtException;
 import com.oracle.database.osbdt.OsbdtNetworkException;
 import com.oracle.database.osbdt.OsbdtOptions;
-import com.oracle.database.osbdt.auth.GetTokenResult;
-import com.oracle.database.osbdt.auth.OsbdtAuth;
 import com.oracle.database.osbdt.http.HttpRequestHelper;
 import com.oracle.database.osbdt.http.HttpResponse;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
@@ -52,6 +50,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -90,46 +89,30 @@ class StorageHelper {
         this.context = instance.getApp().getApplicationContext();
     }
 
-    private String getAccessToken() throws StorageException {
-
-        // TODO -> We don't want to add OsbdtAuth as dependency but if the user doesn't install OsbdtAuth package they cannot access data if its security rule doesn't allow public access
-        String accessToken;
-
-        OsbdtAuth auth = OsbdtAuth.getInstance(this.storage.getApp());
-        if(auth.getCurrentUser() != null)
-        {
-            try {
-                String key = Utils.getPreferenceData(this.storage.getApp().getApplicationContext(),
-                        "LOGGED_IN_USER",
+    /**
+     * Builds the Authorization header with access token.
+     * Decrypts token inline to minimize memory exposure.
+     *
+     * @return Complete Authorization header string or empty string if unavailable
+     * @throws StorageException if token retrieval fails
+     */
+    private String buildAuthorizationHeader() throws StorageException {
+        try {
+            String key = Utils.getPreferenceData(this.storage.getApp().getApplicationContext(),
+                    "LOGGED_IN_USER",
+                    "OsbdtPreferences");
+            if (key != null && !key.isEmpty()) {
+                // Load the user details JSON object and extract the access token
+                JsonObject userDetails = Utils.loadJsonObjectFromPreferences(
+                        this.storage.getApp().getApplicationContext(),
+                        key,
                         "OsbdtPreferences");
-                if (key != null && !key.isEmpty()) {
-                    // Load the user details JSON object and extract the access token
-                    JsonObject userDetails = Utils.loadJsonObjectFromPreferences(
-                            this.storage.getApp().getApplicationContext(),
-                            key,
-                            "OsbdtPreferences");
-                    if (userDetails.containsKey("accessToken")) {
-                        accessToken = userDetails.getString("accessToken");
-                        if (accessToken != null && !accessToken.isEmpty()) {
-                            return accessToken;
-                        }
-                    }
-                }
-            } catch( Exception e)
-            {
-                OsbdtLogger.w("StorageHelper", "Cannot get access token from preferences, falling back to current user: " + e.getMessage());
-                // Fall back to getting token from current user object
-                try {
-                    Task<GetTokenResult> tokenTask = auth.getCurrentUser().getIdToken(false);
-                    GetTokenResult tokenResult = Tasks.await(tokenTask);
-                    String token = tokenResult.getToken();
-                    if (token != null && !token.isEmpty()) {
-                        return token;
-                    }
-                } catch (Exception ex) {
-                    OsbdtLogger.w("StorageHelper", "Cannot get access token from current user: " + ex.getMessage());
+                if (userDetails.containsKey("accessToken")) {
+                    return "Bearer " + userDetails.getString("accessToken");
                 }
             }
+        } catch (Exception e) {
+            OsbdtLogger.w("StorageHelper", "Cannot get access token from current user: " + e.getMessage());
         }
 
         return "";
@@ -149,10 +132,10 @@ class StorageHelper {
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
@@ -203,10 +186,10 @@ class StorageHelper {
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
@@ -367,10 +350,10 @@ class StorageHelper {
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         requestHelper.createHttpRequest(Utils.urlBuilder(this.options.getOrdsHost(),
                         BAAS_SERVICE_PATH,
@@ -425,10 +408,10 @@ class StorageHelper {
         // Populate header
         Map<String, String> headers = new HashMap<>();
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
@@ -514,11 +497,10 @@ class StorageHelper {
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
-
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
@@ -573,10 +555,10 @@ class StorageHelper {
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
@@ -729,10 +711,10 @@ class StorageHelper {
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         headers.put("Content-Type", mimeType);
 
@@ -799,10 +781,11 @@ class StorageHelper {
         // Populate header
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.options.getAppId());
@@ -858,10 +841,11 @@ class StorageHelper {
         // Populate header
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
-        String accessToken = this.getAccessToken();
 
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
 
         Map<String, String> queryParameters = new HashMap<>();
@@ -907,10 +891,10 @@ class StorageHelper {
         Map<String, String> headers = new HashMap<>();
         headers.put("x-object-path", objectPath.toString());
 
-        String accessToken = this.getAccessToken();
-
-        if(accessToken != null && !accessToken.isEmpty())
-            headers.put("Authorization", "Bearer " + accessToken);
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
 
 
         Map<String, String> queryParameters = new HashMap<>();

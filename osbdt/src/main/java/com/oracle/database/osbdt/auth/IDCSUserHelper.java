@@ -61,34 +61,12 @@ class IDCSUserHelper extends UserHelper {
 
     private final String TAG = "OsbdtAuth";
     private final IDCSConfig config;
-    private IdToken authnToken;
-    private String authnRefreshToken;
-    private IdToken accessToken;
-    private String accessRefreshToken;
-
-    private IdToken idcsAccessToken;
-    private String idcsRefreshToken;
-    private IdToken snapshotAccessToken;
-    private String snapshotRefreshToken;
     private final String encodedSecret;
     private final OsbdtUser user;
     private final IDCSAuthHelper authHelper;
-    protected IDCSUserHelper(@NonNull IDCSConfig config,
-                             IdToken authToken,
-                             @NonNull String authnRefreshToken,
-                             IdToken accessToken,
-                             String accessRefreshToken,
-                             IdToken snapshotAccessToken,
-                             String snapshotRefreshToken,
-                             @NonNull OsbdtUser user) {
-        super();
+    protected IDCSUserHelper(@NonNull IDCSConfig config, @NonNull OsbdtUser user) {
+        super(user);
         this.config = config;
-        this.authnToken = authToken;
-        this.authnRefreshToken = authnRefreshToken;
-        this.accessToken = accessToken;
-        this.accessRefreshToken = accessRefreshToken;
-        this.snapshotAccessToken = snapshotAccessToken;
-        this.snapshotRefreshToken = snapshotRefreshToken;
         this.encodedSecret = Base64.getEncoder()
                 .encodeToString(String.format("%s:%s", this.config.clientId, this.config.clientSecret).getBytes());
         this.user = user;
@@ -98,9 +76,11 @@ class IDCSUserHelper extends UserHelper {
     @NonNull
     protected IdToken getIdTokenHelper (boolean forceRefresh) throws OsbdtException {
         if (forceRefresh || !this.validateAccessToken()) {
-            this.refreshAccessToken();
+            refreshAccessToken();
         }
-        return this.idcsAccessToken;
+        JsonObject data = user.loadUserData();
+        String tokenStr = data.getString("idcsAccessToken");
+        return new IdToken(tokenStr, "idcs");
     }
 
     @NonNull
@@ -156,37 +136,48 @@ class IDCSUserHelper extends UserHelper {
             response.getError());
         throw new OsbdtException(response.getError());
     }
-    protected String refreshSnapshotAccessToken () throws OsbdtException {
-        JsonObject result = this.refreshIDCSAccessToken(this.snapshotRefreshToken);
-        this.snapshotAccessToken = new IdToken(result.getString("access_token"), null);
-        this.snapshotRefreshToken = result.getString("refresh_token");
-        this.authnToken = new IdToken(result.getString("authn_token"), "password");
-        this.authnRefreshToken = result.getString("authn_refresh_token");
-        this.user.snapshotAccessToken = this.snapshotAccessToken.getToken();
-        this.user.snapshotRefreshToken = this.snapshotRefreshToken;
-        return this.snapshotRefreshToken;
-    }
+
 
     protected String refreshAccessToken () throws OsbdtException{
+        JsonObject userData = user.loadUserData();
+        String idcsRefreshToken = userData.getString("idcsRefreshToken");
         JsonObject result = this.refreshIDCSAccessToken(idcsRefreshToken);
         JsonObject authCredential = Json.createObjectBuilder()
-            .add("authn_token", this.authnToken.getToken())
-            .add("refresh_token", this.authnRefreshToken)
+            .add("authn_token", userData.getString("authnToken"))
+            .add("refresh_token", userData.getString("authnRefreshToken"))
             .build();
         JsonObject osbdtCredential = this.authHelper.getOsbdtToken(authCredential ,result);
-        this.accessToken = new IdToken(osbdtCredential.getString("access_token"), this.accessToken.signInProvider);
-        this.accessRefreshToken = osbdtCredential.getString("refresh_token");
-        this.authnToken = new IdToken(osbdtCredential.getString("authn_token"), this.accessToken.signInProvider);
-        this.authnRefreshToken = osbdtCredential.getString("authn_refresh_token");
-        this.idcsAccessToken = new IdToken(osbdtCredential.getString("idcs_access_token"), this.idcsAccessToken.signInProvider);
-        this.idcsRefreshToken = osbdtCredential.getString(osbdtCredential.getString("idcs_refresh_token"));
-        this.user.accessToken = this.accessToken;
-        this.user.accessRefreshToken = this.accessRefreshToken;
-        return this.accessRefreshToken;
+
+        String newAccessToken = osbdtCredential.getString("access_token");
+        String newRefreshToken = osbdtCredential.getString("refresh_token");
+        String newAuthnToken = osbdtCredential.getString("authn_token");
+        String newAuthnRefreshToken = osbdtCredential.getString("authn_refresh_token");
+        String newIdcsAccessToken = osbdtCredential.getString("idcs_access_token");
+        String newIdcsRefreshToken = osbdtCredential.getString("idcs_refresh_token");
+
+        JsonObject updatedData = Json.createObjectBuilder(userData)
+            .add("accessToken", newAccessToken)
+            .add("refreshToken", newRefreshToken)
+            .add("authnToken", newAuthnToken)
+            .add("authnRefreshToken", newAuthnRefreshToken)
+            .add("idcsAccessToken", newIdcsAccessToken)
+            .add("idcsRefreshToken", newIdcsRefreshToken)
+            .build();
+
+        saveUserDetails(user.auth.getApp().getApplicationContext(), updatedData, OsbdtAuth.PREFERENCES_NAME);
+
+        return newAccessToken;
     }
 
     protected boolean validateAccessToken() {
-        return this.accessToken.expirationTime >= Instant.now().toEpochMilli() / 1000 + 60 * 5;
+        try {
+            JsonObject data = user.loadUserData();
+            String tokenStr = data.getString("idcsAccessToken");
+            IdToken token = new IdToken(tokenStr, "idcs");
+            return token.expirationTime >= Instant.now().toEpochMilli() / 1000 + 60 * 5;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     protected JsonArray makeOperations (@NonNull UserProfileChangeRequest userProfile) {
