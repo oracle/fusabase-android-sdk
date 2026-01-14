@@ -90,7 +90,7 @@ public class BulkUpdate {
         Objects.requireNonNull(db, "Database cannot be null!");
         Objects.requireNonNull(path, "Path cannot be null!");
         this.oradb = db;
-        this.queryHelper = new QueryHelper(db.getOradbSettings(), db.getApp().getOptions(), db);
+        this.queryHelper = new QueryHelper(db.getOracledbSettings(), db.getApp().getOptions(), db);
         String trimmedPath = path.trim();
 
         if (trimmedPath.isEmpty()) {

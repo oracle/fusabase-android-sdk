@@ -26,30 +26,21 @@
 
 package com.oracle.database.osbdt.auth;
 
-import static com.oracle.database.osbdt.auth.OsbdtAuth.PREFERENCES_NAME;
 
 import android.app.Activity;
-import android.content.Context;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.oracle.database.osbdt.oracledb.OsbdtOracledbException;
 import com.oracle.database.osbdt.OsbdtException;
-import com.oracle.database.osbdt.OsbdtNetworkException;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 import com.oracle.database.osbdt.task.Task;
 import com.oracle.database.osbdt.task.TaskCompletionSource;
-import com.oracle.database.osbdt.utils.SecureString;
 
-import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
-import jakarta.json.Json;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonValue;
 
 /**
  * Abstract base class representing an osbdt user.
@@ -81,22 +72,6 @@ public abstract class OsbdtUser implements UserInfo {
             getUid(),
             OsbdtAuth.PREFERENCES_NAME
         );
-    }
-
-    /**
-     * Creates a secure string from a token string.
-     *
-     * @param token the token string, may be null
-     * @return SecureString instance or null if token is null
-     */
-    private SecureString createSecureString(String token) {
-        if (token == null)
-            return null;
-        try {
-            return new SecureString(token);
-        } catch (GeneralSecurityException e) {
-            return null;
-        }
     }
 
     /**
@@ -336,47 +311,6 @@ public abstract class OsbdtUser implements UserInfo {
     }
 
     /**
-     * Reauthenticates the user with the given credential.
-     *
-     * @param credential the credential to reauthenticate with
-     * @return task representing the reauthentication operation
-     */
-    @NonNull
-    public Task<Void> reauthenticate(@NonNull AuthCredential credential) {
-        TaskCompletionSource<Void> taskCompletionSource = new TaskCompletionSource<>();
-        Task<Void> task = taskCompletionSource.getTask();
-
-        Task<AuthResult> authTask;
-        if (credential instanceof EmailAuthCredential) {
-            EmailAuthCredential emailCred = (EmailAuthCredential) credential;
-            authTask = this.auth.signInWithEmailAndPassword(emailCred.getEmail(), emailCred.getPassword());
-        } else {
-            authTask = this.auth.signInWithCredential(credential);
-        }
-
-        authTask.addOnSuccessListener(result -> taskCompletionSource.setResult(null));
-        authTask.addOnFailureListener(e -> taskCompletionSource.setException(e));
-
-        return task;
-    }
-
-    /**
-     * Reauthenticates the user with the given credential, and returns the profile data for that account.
-     *
-     * @param credential the credential to reauthenticate with
-     * @return task representing the reauthentication operation with profile data
-     */
-    @NonNull
-    public Task<AuthResult> reauthenticateAndRetrieveData (@NonNull AuthCredential credential) {
-        if (credential instanceof EmailAuthCredential) {
-            EmailAuthCredential emailCred = (EmailAuthCredential) credential;
-            return this.auth.signInWithEmailAndPassword(emailCred.getEmail(), emailCred.getPassword());
-        } else {
-            return this.auth.signInWithCredential(credential);
-        }
-    }
-
-    /**
      * Links the user using the mobile browser (either a Custom Chrome Tab or the device's default browser) to the given provider.
      *
      * @param activity the activity context
@@ -385,20 +319,6 @@ public abstract class OsbdtUser implements UserInfo {
      */
     @NonNull
     public Task<AuthResult> startActivityForLinkWithProvider(
-        @NonNull Activity activity,
-        @NonNull FederatedAuthProvider federatedAuthProvider) {
-        return this.auth.startActivityForSignInWithProvider(activity, federatedAuthProvider);
-    }
-
-    /**
-     * Reauthenticates the user using the mobile browser (either a Custom Chrome Tab or the device's default browser) using the given provider.
-     *
-     * @param activity the activity context
-     * @param federatedAuthProvider the provider to reauthenticate with
-     * @return task representing the reauthentication operation
-     */
-    @NonNull
-    public Task<AuthResult> startActivityForReauthenticateWithProvider(
         @NonNull Activity activity,
         @NonNull FederatedAuthProvider federatedAuthProvider) {
         return this.auth.startActivityForSignInWithProvider(activity, federatedAuthProvider);

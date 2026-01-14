@@ -99,7 +99,7 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
         this.executor = Executors.newSingleThreadExecutor();
         this.oracledb = oracledb;
         this.ref = ref;
-        this.method = oracledb.getOradbSettings().getOptions().isUseSocket() ? Method.WEBSOCKET : Method.LONG_POLLING;
+        this.method = oracledb.getOracledbSettings().getOptions().isUseSocket() ? Method.WEBSOCKET : Method.LONG_POLLING;
         this.pollingController = new PollingController(this);
         this.webSocketController = WebSocketController.getInstance(oracledb);
     }

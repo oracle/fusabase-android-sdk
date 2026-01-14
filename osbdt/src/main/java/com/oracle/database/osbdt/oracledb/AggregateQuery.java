@@ -114,7 +114,7 @@ public class AggregateQuery {
         this.aggregate = this.query.aggregate;
         this.limit = this.query.limit;
         this.registeredListeners = new ArrayList<>();
-        OsbdtOracledbSettings settings = this.query.getOradb().getOradbSettings();
+        OsbdtOracledbSettings settings = this.query.getOradb().getOracledbSettings();
         this.queryHelper = new QueryHelper(settings,
                 settings.getOptions(),
                 query.oradb);

@@ -186,7 +186,7 @@ public class OsbdtOracledb {
      * @return The OsbdtOracledbSettings for this instance
      */
     @NonNull
-    public OsbdtOracledbSettings getOradbSettings() {
+    public OsbdtOracledbSettings getOracledbSettings() {
         return this.settings;
     }
 
@@ -215,27 +215,6 @@ public class OsbdtOracledb {
         }
         INSTANCES.put(app.getName(), new OsbdtOracledb(app));
         return getInstance(app);
-    }
-
-    /**
-     * Executes the provided batch function and commits all write operations within it
-     * as a single atomic transaction. All operations in the batch succeed or fail together.
-     *
-     * @param batchFunction The function containing all the write operations to execute
-     * @return A Task that completes when the batch operation finishes
-     */
-    @NonNull
-    public Task<Void> runBatch(@NonNull WriteBatch.Function batchFunction) {
-        TaskCompletionSource<Void> taskCompletionSource = new TaskCompletionSource<>();
-        Task<Void> task = taskCompletionSource.getTask();
-
-        CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
-            taskCompletionSource.setResult(null);
-            return "";
-        });
-
-        taskCompletionSource.handleFuture(future);
-        return task;
     }
 
     /**
@@ -332,15 +311,12 @@ public class OsbdtOracledb {
     }
 
     /**
-     * Enables or disables logging for the database operations.
-     * Note: This method is currently not implemented.
+     * Returns a {@link BulkUpdate} instance for the specified collection path.
+     * This allows developers to perform bulk update operations with a where clause.
      *
-     * @param loggingEnabled true to enable logging, false to disable
+     * @param path the collection path on which the bulk update will be applied
+     * @return a BulkUpdate object to configure and execute the update
      */
-    public static void setLoggingEnabled(boolean loggingEnabled) {
-        // TODO: Implement logging enable/disable functionality
-    }
-
     @NonNull
     public BulkUpdate bulkUpdate(@NonNull String path) {
         return new BulkUpdate(this, path);

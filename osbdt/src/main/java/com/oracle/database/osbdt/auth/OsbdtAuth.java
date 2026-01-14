@@ -621,23 +621,6 @@ public class OsbdtAuth {
         return signInWithCredentialLinking(credential, false);
     }
 
-    @NonNull
-    protected Task<AuthResult> startActivityForSignInWithProviderLink (@NonNull Activity activity,
-                                                                       @NonNull FederatedAuthProvider authProvider,
-                                                                       boolean link) {
-        if(this.config.authType.equals(IDCS_AUTH_TYPE))
-        {
-            if(!(authProvider instanceof IDCSAuthProvider))
-                throw new IllegalArgumentException("IDCS Auth Type supports only IDCSAuthProvider");
-        }
-        return SocialLoginActivity.createCustomTabForSignInWithProvider(
-            this.app,
-            activity,
-            authProvider,
-            this.authHelper,
-            true
-        );
-    }
      /**
      * Signs in with the specified provider.
      *

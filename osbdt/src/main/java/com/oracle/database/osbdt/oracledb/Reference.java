@@ -73,7 +73,7 @@ abstract class Reference {
      */
     Reference(@NonNull OsbdtOracledb oradb) {
         this.oradb = oradb;
-        OsbdtOracledbSettings settings = oradb.getOradbSettings();
+        OsbdtOracledbSettings settings = oradb.getOracledbSettings();
         this.queryHelper = new QueryHelper(settings,
                 settings.getOptions(),
                 oradb);

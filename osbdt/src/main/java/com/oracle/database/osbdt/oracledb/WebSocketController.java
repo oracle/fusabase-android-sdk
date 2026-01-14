@@ -28,9 +28,6 @@ package com.oracle.database.osbdt.oracledb;
 
 import androidx.annotation.NonNull;
 
-import com.oracle.database.osbdt.auth.GetTokenResult;
-import com.oracle.database.osbdt.auth.OsbdtAuth;
-import com.oracle.database.osbdt.auth.OsbdtUser;
 import com.oracle.database.osbdt.OsbdtException;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 import com.oracle.database.osbdt.http.HttpRequestHelper;
@@ -40,7 +37,6 @@ import com.oracle.database.osbdt.http.WebSocketClient;
 import com.oracle.database.osbdt.utils.Utils;
 import com.oracle.database.osbdt.task.OnCompleteListener;
 import com.oracle.database.osbdt.task.Task;
-import com.oracle.database.osbdt.task.Tasks;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -361,7 +357,7 @@ class WebSocketController {
     }
 
     private JsonObject getBaseSnapshotToken() throws OsbdtOracledbException {
-        HttpRequestHelper requestHelper = new HttpRequestHelper(oracledb.getOradbSettings().getMaxAttempt());
+        HttpRequestHelper requestHelper = new HttpRequestHelper(oracledb.getOracledbSettings().getMaxAttempt());
 
         // Populate headers
         Map<String, String> headers = new HashMap<>();
@@ -374,15 +370,15 @@ class WebSocketController {
         headers.put("Authorization", authHeader);
 
         Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.oracledb.getOradbSettings().getOptions().getAppId());
+        queryParameters.put("apiKey", this.oracledb.getOracledbSettings().getOptions().getAppId());
 
         try {
             // Create the request
-            requestHelper.createHttpRequest(Utils.urlBuilder(this.oracledb.getOradbSettings().getOptions().getOrdsHost(),
+            requestHelper.createHttpRequest(Utils.urlBuilder(this.oracledb.getOracledbSettings().getOptions().getOrdsHost(),
                     QueryHelper.BAAS_SERVICE,
                     QueryHelper.IDM,
                     QueryHelper.ONPREM,
-                    this.oracledb.getOradbSettings().getOptions().getProjectId(),
+                    this.oracledb.getOracledbSettings().getOptions().getProjectId(),
                     QueryHelper.AUTHORIZE_SNAPSHOT),
                 "GET",
                 headers,
@@ -434,7 +430,7 @@ class WebSocketController {
      * @throws OsbdtOracledbException if the token cannot be retrieved
      */
     private JsonObject getSnapshotToken() throws OsbdtOracledbException {
-        if(this.oracledb.getOradbSettings().getOptions().getAuthType().equals("base"))
+        if(this.oracledb.getOracledbSettings().getOptions().getAuthType().equals("base"))
             return this.getBaseSnapshotToken();
         else
             return this.getIDCSSnapshotToken();
@@ -467,7 +463,7 @@ class WebSocketController {
         URI websocketURL;
 
         try {
-            ordsHost = new URI(this.oracledb.getOradbSettings().getOptions().getOrdsHost());
+            ordsHost = new URI(this.oracledb.getOracledbSettings().getOptions().getOrdsHost());
             String scheme = ordsHost.getScheme().equalsIgnoreCase("https") ? "wss" : "ws";
             String schema = ordsHost.getPath().replaceFirst("^/ords/([^/]+)/?$", "$1");
             websocketURL = new URI(scheme,
