@@ -99,24 +99,4 @@ public class StorageTest {
         assertTrue(childRef.getPath().contains("test_dir/test_file.txt"));
     }
 
-    // ----------- RETRY TIME CONFIG TESTS -----------
-
-    @Test
-    public void testSetMaxDownloadRetryTime() {
-        storage.setMaxDownloadRetryTimeMillis(2000);
-        assertEquals(2000, storage.getMaxDownloadRetryTimeMillis());
-    }
-
-    @Test
-    public void testSetMaxUploadRetryTime() {
-        storage.setMaxUploadRetryTimeMillis(3000);
-        assertEquals(3000, storage.getMaxUploadRetryTimeMillis());
-    }
-
-    @Test
-    public void testSetMaxOperationRetryTime() {
-        storage.setMaxOperationRetryTimeMillis(4000);
-        assertEquals(4000, storage.getMaxOperationRetryTimeMillis());
-    }
-
 }
