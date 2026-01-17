@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.net.Uri;
+import android.util.Base64;
 import android.util.Log;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -38,6 +39,14 @@ import com.oracle.database.osbdt.task.Tasks;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -54,7 +63,7 @@ public class regression {
     private static final String DEFAULT_PASSWORD = "Password@123";
 
     private static String generateRandomStringForPassword(int length) {
-        String letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@!$.";
+        String letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder(length);
         java.util.Random random = new java.util.Random();
         for (int i = 0; i < length; i++) {
@@ -133,14 +142,14 @@ public class regression {
             case "base":
                 optionsBuilder
                         .setOrdsHost("https://phoenix555379.dev3sub4phx.databasede3phx.oraclevcn.com:8443/ords/USER1/");
-                optionsBuilder.setProjectId("47DD506E3CFEE041E0631F965E640C80");
-                optionsBuilder.setAppId("47DE7A6CC67A2484E0631F965E640E85");
-                optionsBuilder.setObjectType("oci");
+                optionsBuilder.setProjectId("487F5C795814AF5CE0631F965E64BFA9");
+                optionsBuilder.setAppId("4882E63ECC11EBFBE0631F965E64538D");
+                optionsBuilder.setObjectType("dbfs");
                 optionsBuilder.setSchema("USER1");
-                optionsBuilder.setStorageBucket("baas_bucket");
+                optionsBuilder.setStorageBucket("dbfs_AYHGNEYXYDVSZFL");
                 optionsBuilder.setApiVersion("2.0");
                 optionsBuilder.setAppName("testapp");
-                optionsBuilder.setAuthId("47F3EC3B8C18A099E0631F965E64A607");
+                optionsBuilder.setAuthId("487F5C8C63AFAF64E0631F965E6436E6");
                 optionsBuilder.setUseSocket(true);
                 optionsBuilder.setUploadChunkSize(1000);
                 optionsBuilder.setAllowsSelfSignedCertificates(true);
@@ -165,13 +174,13 @@ public class regression {
                 optionsBuilder.setIDCSOptions(idcsOptionsBuilder.build());
                 optionsBuilder
                         .setOrdsHost("https://phoenix555379.dev3sub4phx.databasede3phx.oraclevcn.com:8443/ords/USER1/");
-                optionsBuilder.setProjectId("47DD506E3CFEE041E0631F965E640C80");
-                optionsBuilder.setAppId("47DE7A6CC67A2484E0631F965E640E85");
-                optionsBuilder.setObjectType("oci");
-                optionsBuilder.setStorageBucket("baas_bucket");
+                optionsBuilder.setProjectId("487F5C795814AF5CE0631F965E64BFA9");
+                optionsBuilder.setAppId("4882E63ECC11EBFBE0631F965E64538D");
+                optionsBuilder.setObjectType("dbfs");
+                optionsBuilder.setStorageBucket("dbfs_AYHGNEYXYDVSZFL");
                 optionsBuilder.setApiVersion("2.0");
                 optionsBuilder.setAppName("testapp");
-                optionsBuilder.setAuthId("47F3EC3B8C18A099E0631F965E64A607");
+                optionsBuilder.setAuthId("487F5C8C63AFAF64E0631F965E6436E6");
                 optionsBuilder.setUseSocket(true);
                 optionsBuilder.setUploadChunkSize(1000);
                 optionsBuilder.setAllowsSelfSignedCertificates(true);
@@ -201,6 +210,87 @@ public class regression {
     private Storage getStorageForType(String authType) {
         OsbdtAuth auth = getAuthForType(authType);
         return Storage.getInstance(auth.getApp());
+    }
+
+    /**
+     * Add security rules for a hierarchical collection path.
+     * Takes an array of collection names representing a hierarchy and creates security rules
+     * for each level of the path in a single request body. For example, ["users", "recipes", "posts"] creates rules for:
+     * match /users/{fileId} { allow read: if true; allow write: if true; }
+     * match /users/{fileId}/recipes/{fileId} { allow read: if true; allow write: if true; }
+     * match /users/{fileId}/recipes/{fileId}/posts/{fileId} { allow read: if true; allow write: if true; }
+     *
+     * @param collections array of collection names representing the hierarchy
+     * @throws Exception if the security rules cannot be applied
+     */
+    private void addSecurityRule(String[] collections) throws Exception {
+        Log.d("SecurityRules", "Adding security rules for " + collections.length + " collection levels");
+
+        OsbdtAuth auth = getAuthForType("base");
+        OsbdtApp app = auth.getApp();
+
+        String urlStr = app.osbdtOptions.getOrdsHost() + "_/baas-panel/project/cel/" + app.osbdtOptions.getProjectId() + "?storage=1";
+        String creds = app.osbdtOptions.getSchema().toLowerCase() + ":" + app.osbdtOptions.getSchema().toLowerCase();
+
+        // Create HttpRequestHelper instance
+        com.oracle.database.osbdt.http.HttpRequestHelper requestHelper = new com.oracle.database.osbdt.http.HttpRequestHelper();
+
+        // Set up headers
+        java.util.Map<String, String> headers = new java.util.HashMap<>();
+        headers.put("Content-Type", "text/plain");
+        headers.put("Authorization", encodeAuthFromSchema("user1"));
+
+        // Build all rules in a single body
+        StringBuilder bodyBuilder = new StringBuilder();
+
+        // Build cumulative path for each level in the hierarchy
+        for (int i = 0; i < collections.length; i++) {
+            // Build the path for this level: /collection1/{fileId}/collection2/{fileId}/.../collectionN/{fileId}
+            StringBuilder pathBuilder = new StringBuilder();
+            for (int j = 0; j <= i; j++) {
+                if (j > 0) {
+                    pathBuilder.append("/{fileId}");
+                }
+                pathBuilder.append("/").append(collections[j]);
+            }
+            pathBuilder.append("/{fileId}");
+
+            String rulePath = pathBuilder.toString();
+            bodyBuilder.append("match ").append(rulePath).append(" { allow read: if true;\n");
+            bodyBuilder.append("                 allow write: if true;\n");
+            bodyBuilder.append("                 }\n");
+        }
+
+        String body = bodyBuilder.toString();
+
+        try {
+            Log.d("SecurityRules", "Applying all security rules in single request");
+
+            // Create POST request with all rules
+            requestHelper.createHttpRequest(urlStr, "POST", headers, body);
+
+            // Execute request
+            com.oracle.database.osbdt.http.HttpResponse response = requestHelper.executeRequest();
+
+            if (!response.getStatus()) {
+                Log.e("SecurityRules", "Failed to apply security rules: " + response.getError());
+                throw new RuntimeException("Security rules failed to apply: " + response.getError());
+            }
+
+            // Check for successful status code (200-299)
+            if (response.getCode() < 200 || response.getCode() >= 300) {
+                Log.e("SecurityRules", "HTTP " + response.getCode() + " while applying security rules");
+                throw new RuntimeException("Security rules failed to apply with status code: " + response.getCode());
+            }
+
+            Log.d("SecurityRules", "Successfully applied all security rules");
+
+        } catch (com.oracle.database.osbdt.OsbdtException e) {
+            Log.e("SecurityRules", "Security rules failed to apply", e);
+            throw new RuntimeException("Security rules failed to apply", e);
+        }
+
+        Log.d("SecurityRules", "Completed adding security rules for all " + collections.length + " collection levels");
     }
 
     @Test
@@ -7157,4 +7247,85 @@ public class regression {
     // }
     // }
     // }
+
+
+    // SDK Spec Tests
+
+    @Test
+    public void testCreateUserAndRecipeDocuments() throws Exception {
+        addSecurityRule(new String[]{"users", "recipes"});
+        for (String authType : AUTH_TYPES) {
+            Log.d("RegressionTest", "Testing create user and recipe documents with authType: " + authType);
+            OsbdtAuth auth = getAuthForType(authType);
+            String[] credentials = getNewUserCredentials();
+            String email = credentials[0];
+            String password = credentials[1];
+
+            await(auth.createUserWithEmailAndPassword(email, password));
+
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            // 1️⃣ Create/Update user document
+            Map<String, Object> user = new HashMap<>();
+            user.put("displayName", "Scott");
+            user.put("photoURL", null); // or user.getPhotoUrl()
+
+            await(db.collection("users").document("Scott")
+                    .set(user));
+
+            // 2️⃣ Create recipe subcollection document
+            Map<String, Object> recipe = new HashMap<>();
+            recipe.put("uuid", "Scott");
+            recipe.put("title", "Chocolate Chip Cookies");
+            recipe.put("ingredients", "2 cups flour,1 cup sugar,1/2 cup chocolate chips");
+            recipe.put("steps", Arrays.asList("Mix ingredients", "Bake for 15 min"));
+            recipe.put("category", "Dessert");
+            recipe.put("difficulty", "Easy");
+            recipe.put("tags", Arrays.asList("sweet", "baking"));
+            recipe.put("avgRating", 0);
+            recipe.put("photoRefs", new ArrayList<>());
+
+            await(db.collection("users").document("Scott")
+                    .collection("recipes").document("Cookies")
+                    .set(recipe));
+
+            // Verify user document was created
+            DocumentSnapshot userSnapshot = await(db.collection("users").document("Scott").get());
+            assertTrue("User document should exist for " + authType, userSnapshot.exists());
+            assertEquals("User displayName should match for " + authType, "Scott", userSnapshot.getString("displayName"));
+            assertNull("User photoURL should be null for " + authType, userSnapshot.getString("photoURL"));
+
+            // Verify recipe document was created
+            DocumentSnapshot recipeSnapshot = await(db.collection("users").document("Scott")
+                    .collection("recipes").document("Cookies").get());
+            assertTrue("Recipe document should exist for " + authType, recipeSnapshot.exists());
+            assertEquals("Recipe uuid should match for " + authType, "Scott", recipeSnapshot.getString("uuid"));
+            assertEquals("Recipe title should match for " + authType, "Chocolate Chip Cookies", recipeSnapshot.getString("title"));
+            assertEquals("Recipe ingredients should match for " + authType, "2 cups flour,1 cup sugar,1/2 cup chocolate chips", recipeSnapshot.getString("ingredients"));
+
+            List<String> steps = (List<String>) recipeSnapshot.get("steps");
+            assertNotNull("Recipe steps should not be null for " + authType, steps);
+            assertEquals("Recipe steps size should be 2 for " + authType, 2, steps.size());
+            assertEquals("First step should match for " + authType, "Mix ingredients", steps.get(0));
+            assertEquals("Second step should match for " + authType, "Bake for 15 min", steps.get(1));
+
+            assertEquals("Recipe category should match for " + authType, "Dessert", recipeSnapshot.getString("category"));
+            assertEquals("Recipe difficulty should match for " + authType, "Easy", recipeSnapshot.getString("difficulty"));
+
+            List<String> tags = (List<String>) recipeSnapshot.get("tags");
+            assertNotNull("Recipe tags should not be null for " + authType, tags);
+            assertEquals("Recipe tags size should be 2 for " + authType, 2, tags.size());
+            assertTrue("Tags should contain 'sweet' for " + authType, tags.contains("sweet"));
+            assertTrue("Tags should contain 'baking' for " + authType, tags.contains("baking"));
+
+            assertEquals("Recipe avgRating should match for " + authType, Long.valueOf(0), recipeSnapshot.getLong("avgRating"));
+
+            List<?> photoRefs = (List<?>) recipeSnapshot.get("photoRefs");
+            assertNotNull("Recipe photoRefs should not be null for " + authType, photoRefs);
+            assertTrue("Recipe photoRefs should be empty for " + authType, photoRefs.isEmpty());
+
+            deleteUser(email);
+        }
+    }
+
 }

@@ -311,20 +311,6 @@ public abstract class OsbdtUser implements UserInfo {
     }
 
     /**
-     * Links the user using the mobile browser (either a Custom Chrome Tab or the device's default browser) to the given provider.
-     *
-     * @param activity the activity context
-     * @param federatedAuthProvider the provider to link with
-     * @return task representing the link operation
-     */
-    @NonNull
-    public Task<AuthResult> startActivityForLinkWithProvider(
-        @NonNull Activity activity,
-        @NonNull FederatedAuthProvider federatedAuthProvider) {
-        return this.auth.startActivityForSignInWithProvider(activity, federatedAuthProvider);
-    }
-
-    /**
      * Detaches credentials from a given provider type from this user.
      *
      * @param provider the provider type

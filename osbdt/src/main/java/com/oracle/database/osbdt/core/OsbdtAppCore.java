@@ -31,6 +31,8 @@ import static com.oracle.database.osbdt.core.OsbdtConstants.AUTH_TYPE_IDCS;
 import static com.oracle.database.osbdt.core.OsbdtConstants.AUTH_TYPE_LDAP;
 import static com.oracle.database.osbdt.core.OsbdtConstants.CLIENT_ID;
 import static com.oracle.database.osbdt.core.OsbdtConstants.CLIENT_SECRET;
+import static com.oracle.database.osbdt.core.OsbdtConstants.ALLOW_SELF_SIGNED_CERTIFICATES_KEY;
+import static com.oracle.database.osbdt.core.OsbdtConstants.DEFAULT_ALLOWS_SELF_SIGNED_CERTIFICATES;
 import static com.oracle.database.osbdt.core.OsbdtConstants.DEFAULT_API_VERSION;
 import static com.oracle.database.osbdt.core.OsbdtConstants.DEFAULT_ENABLE_LOGGING;
 import static com.oracle.database.osbdt.core.OsbdtConstants.DEFAULT_LONG_POLLING_INTERVAL;
@@ -97,6 +99,12 @@ public class OsbdtAppCore {
                 optionsBuilder.setEnableLogging(Boolean.parseBoolean(Utils.getConfigValue(context, OsbdtConstants.ENABLE_LOGGING_KEY)));
             } catch (Resources.NotFoundException e) {
                 optionsBuilder.setEnableLogging(DEFAULT_ENABLE_LOGGING);
+            }
+
+            try {
+                optionsBuilder.setAllowsSelfSignedCertificates(Boolean.parseBoolean(Utils.getConfigValue(context, ALLOW_SELF_SIGNED_CERTIFICATES_KEY)));
+            } catch (Resources.NotFoundException e) {
+                optionsBuilder.setAllowsSelfSignedCertificates(DEFAULT_ALLOWS_SELF_SIGNED_CERTIFICATES);
             }
 
             optionsBuilder.setProjectId(Utils.getConfigValue(context, OsbdtConstants.PROJECT_ID_KEY))
