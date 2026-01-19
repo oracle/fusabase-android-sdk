@@ -1,93 +1,330 @@
-# osbdt-java-android
+# OSBDT Android SDK
 
+Oracle Database Backend as a Service (BaaS) SDK for Android.
 
+- Authentication (email/password and federated providers), user profile APIs
+- OracleDB document APIs (collections, documents, queries, duality views, transactions, batch)
+- Storage APIs (upload/download, metadata, listing)
+- Automatic initialization from osbdt-config.json via a Gradle plugin
 
-## Getting started
+License: Dual-licensed under UPL 1.0 and Apache 2.0. See LICENSE.txt.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Requirements
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://orahub.oci.oraclecorp.com/database-dbtools-dev/osbdt-java-android.git
-git branch -M main
-git push -uf origin main
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://orahub.oci.oraclecorp.com/database-dbtools-dev/osbdt-java-android/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- Android Gradle Plugin: 8.7.0+
+- Kotlin: 2.0.21+ (optional; Java supported)
+- Java toolchain: 11
+- Android compileSdk: 34
+- Android minSdk: 26
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+
+Add the internal Artifactory repository where artifacts are published.
+
+settings.gradle.kts
+```kotlin
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        // OSBDT config Gradle plugin
+        maven {
+            url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-release-local")
+            credentials {
+                username = {username}
+                password = {password}
+            }
+        }
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // OSBDT library and plugin artifacts
+        maven {
+            url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-release-local")
+            credentials {
+                username = {username}
+                password = {password}
+            }
+        }
+    }
+}
+```
+
+Add the library dependency to your app/library module:
+
+build.gradle.kts (module)
+```kotlin
+dependencies {
+    implementation("com.oracle.database.osbdt:osbdt-android-sdk:1.0.251224")
+}
+```
+
+## Third-Party Dependencies
+
+The OSBDT Android SDK includes the following third-party dependencies:
+
+- `androidx.appcompat:appcompat:1.7.0` - Android AppCompat library
+- `androidx.browser:browser:1.8.0` - Android Browser library for custom tabs
+- `com.squareup.okhttp3:okhttp:5.1.0` - HTTP client for network operations
+- `org.glassfish:jakarta.json:2.0.1` - JSON processing library
+
+These dependencies are automatically included when you add the OSBDT SDK to your project and do not require separate declaration.
+
+## Configuration (osbdt-config.json)
+
+Place an osbdt-config.json file in your app module root (same level as its build.gradle.kts). The OSBDT Gradle plugin reads it and generates res/values/osbdt.generated.xml. These resources are used for auto-initialization.
+
+Example osbdt-config.json
+```json
+{
+  "ords_host": "https://your-ords.example.com/ords/",
+  "schema": "YOUR_SCHEMA",
+  "app_name": "YourApp",
+  "app_type": "WEB",
+  "app_id": "your-app-id",
+  "objs_type": "oci-objects",
+  "storage_bucket": "your-bucket",
+  "auth_type": "idcs",
+  "auth_id": "your-auth-id",
+  "project_id": "your-project-id",
+  "api_version": 2,
+  "useSocket": true,
+  "upload_chunk_size": 1048576,
+  "long_polling_interval": 3000,
+  "idcs_options": {
+    "domain_url": "https://idcs-guid.oraclecloud.com",
+    "clientId": "your-client-id",
+    "clientSecret": "your-client-secret",
+    "selfRegistrationProfile": "Default"
+  }
+}
+```
+
+## Apply the OSBDT config Gradle plugin
+
+This plugin converts osbdt-config.json into Android string resources at build time.
+
+build.gradle.kts (app module)
+```kotlin
+plugins {
+    id("com.oracle.database.osbdt.osbdt-config-plugin")
+}
+```
+build.gradle.kts (project)
+```kotlin
+buildscript {
+    repositories {
+        maven { url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-release-local") }
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.oracle.database.osbdt:osbdt-config-plugin:1.0.251224")
+    }
+}
+```
+Alternative (legacy) classpath approach if you cannot use pluginManagement:
+
+build.gradle.kts (app module)
+```kotlin
+apply(plugin = "com.oracle.database.osbdt.osbdt-config-plugin")
+```
+
+## Quickstart
+
+Auto-initialization:
+- The SDK initializes automatically via OsbdtInitProvider using values generated from osbdt-config.json.
+- For most apps, no code is required.
+
+Manual initialization (if needed):
+```java
+import com.oracle.database.osbdt.OsbdtApp;
+
+OsbdtApp app = OsbdtApp.initializeApp(applicationContext); // reads generated resources
+```
+
+Initialize with explicit options (advanced):
+```java
+import com.oracle.database.osbdt.OsbdtApp;
+import com.oracle.database.osbdt.OsbdtOptions;
+
+OsbdtOptions options = new OsbdtOptions.Builder()
+    .setOrdsHost("https://your-ords.example.com/ords/")
+    .setProjectId("your-project-id")
+    .setAppId("your-app-id")
+    .setAppName("YourApp")
+    .setAuthType("idcs")
+    .setSchema("YOUR_SCHEMA")
+    .setApiVersion("v1")
+    .setUseSocket(true)
+    .build();
+
+OsbdtApp app = OsbdtApp.initializeApp(applicationContext, options);
+```
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+OracleDB
+```java
+import com.oracle.database.osbdt.OsbdtApp;
+import com.oracle.database.osbdt.oracledb.OsbdtOracledb;
+import com.oracle.database.osbdt.oracledb.CollectionReference;
+import com.oracle.database.osbdt.oracledb.DocumentReference;
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+OsbdtApp app = OsbdtApp.getInstance();
+OsbdtOracledb db = OsbdtOracledb.getInstance(app);
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+// References
+CollectionReference cities = db.collection("cities");
+DocumentReference sf = db.document("cities/sf");
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+// Queries (example style)
+CollectionReference q = db.collection("cities"); // add where/orderBy in your API calls as supported
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Transactions
+```java
+import com.oracle.database.osbdt.task.Task;
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Task<String> resultTask = db.runTransaction(txn -> {
+    // Read/write via txn with your domain-specific APIs
+    return "OK";
+});
+```
+
+Batch
+```java
+import com.oracle.database.osbdt.oracledb.*;
+
+OsbdtOracledb db = OsbdtOracledb.getInstance(app);
+WriteBatch batch = db.batch();
+
+batch.set(db.collection("cities").document("SF"),
+    Map.of("name", "San Francisco", "population", 883305));
+batch.set(db.collection("cities").document("LA"),
+    Map.of("name", "Los Angeles", "population", 3979576));
+
+batch.commit();
+```
+
+Auth
+```java
+import com.oracle.database.osbdt.auth.*;
+
+OsbdtAuth auth = OsbdtAuth.getInstance(app);
+
+// Sign up
+auth.createUserWithEmailAndPassword("user@example.com", "password123")
+    .addOnSuccessListener(result -> {
+        OsbdtUser user = result.getUser();
+    });
+
+// Sign in
+auth.signInWithEmailAndPassword("user@example.com", "password123")
+    .addOnSuccessListener(result -> {
+        OsbdtUser user = result.getUser();
+    });
+
+// Get current user
+OsbdtUser user = auth.getCurrentUser();
+String email = user.getEmail();
+
+// Sign out
+auth.signOut();
+```
+
+Storage
+```java
+import com.oracle.database.osbdt.storage.*;
+
+Storage storage = Storage.getInstance(app);
+StorageReference fileRef = storage.getReference().child("images/photo.jpg");
+
+// Upload
+byte[] data = "Hello World!".getBytes();
+fileRef.putBytes(data).addOnSuccessListener(snapshot -> {
+    // Upload successful
+});
+
+// Download
+fileRef.getBytes(Long.MAX_VALUE).addOnSuccessListener(bytes -> {
+    // Process downloaded data
+});
+
+// Get download URL
+fileRef.getDownloadUrl().addOnSuccessListener(uri -> {
+    // Use download URL
+});
+
+// List files
+storage.getReference().child("images/").listAll()
+    .addOnSuccessListener(result -> {
+        for (StorageReference item : result.getItems()) {
+            // Process files
+        }
+    });
+```
+
+## Android Manifest
+
+The SDK auto-registers a content provider:
+```xml
+<provider
+    android:name="com.oracle.database.osbdt.OsbdtInitProvider"
+    android:authorities="${applicationId}.OsbdtInitProvider"
+    android:exported="false"
+    android:initOrder="100"/>
+```
+
+For social login via redirect, add the activity and scheme (if used):
+```xml
+<activity android:name="com.oracle.database.auth.SocialLoginActivity"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="${osbdt_scheme}" />
+    </intent-filter>
+</activity>
+```
+
+## ProGuard / R8
+
+No special rules required by default. If you enable obfuscation, keep public models/APIs you reflect on. See osbdt/proguard-rules.pro for project defaults.
+
+## Testing and Coverage
+
+Instrumented tests and coverage:
+```bash
+./gradlew connectedDebugAndroidTest
+./gradlew :osbdt:jacocoAndroidTestReport
+```
+Reports are generated under osbdt/build/reports/jacoco.
+
+## Publishing (internal)
+
+Artifacts are published to:
+- https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-dev-local
+
+Coordinates:
+- Library: com.oracle.database.osbdt:osbdt-android-sdk:$VERSION
+- Gradle plugin: com.oracle.database.osbdt:osbdt-config-plugin:$VERSION
+
+Ensure ARTIFACTORY_USERNAME and ARTIFACTORY_PASSWORD are set, or define artifactoryUsername/artifactoryPassword in gradle.properties.
+
+## Troubleshooting
+
+- osbdt-config.json is not found … Please provide the config file in the app/ directory.
+  - Place osbdt-config.json at the app module root (same level as build.gradle.kts).
+- Cannot read osbdt-config.json. Please make sure that the file is not corrupted.
+  - Validate JSON, ensure the file is readable.
+- Social login redirect not working:
+  - Add SocialLoginActivity and set osbdt_scheme via resources/config.
 
 ## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Dual-licensed under the UPL 1.0 and Apache 2.0. See LICENSE.txt for details.
