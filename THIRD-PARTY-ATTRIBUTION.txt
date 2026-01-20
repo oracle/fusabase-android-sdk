@@ -1,0 +1,8 @@
+Oracle Simple Backend Developer Toolkit Third-Party License Information
+--------------------------------------
+
+This product contains third-party code. Oracle is required to provide the notices for that code.
+The licence manual for this release can be found at
+
+https://docs-uat.us.oracle.com/en/database/oracle/simple-backend-developer-toolkit/25.3/osbdt/
+
