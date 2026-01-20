@@ -19,7 +19,7 @@ License: Dual-licensed under UPL 1.0 and Apache 2.0. See LICENSE.txt.
 
 ## Installation
 
-Add the internal Artifactory repository where artifacts are published.
+Add the Maven Central repository where the SDK artifacts are published.
 
 settings.gradle.kts
 ```kotlin
@@ -27,14 +27,6 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        // OSBDT config Gradle plugin
-        maven {
-            url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-release-local")
-            credentials {
-                username = {username}
-                password = {password}
-            }
-        }
     }
 }
 dependencyResolutionManagement {
@@ -42,14 +34,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // OSBDT library and plugin artifacts
-        maven {
-            url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-release-local")
-            credentials {
-                username = {username}
-                password = {password}
-            }
-        }
     }
 }
 ```
@@ -59,7 +43,7 @@ Add the library dependency to your app/library module:
 build.gradle.kts (module)
 ```kotlin
 dependencies {
-    implementation("com.oracle.database.osbdt:osbdt-android-sdk:1.0.251224")
+    implementation("com.oracle.database.osbdt:osbdt-android-sdk:{version}")
 }
 ```
 
@@ -118,12 +102,11 @@ build.gradle.kts (project)
 ```kotlin
 buildscript {
     repositories {
-        maven { url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-release-local") }
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.oracle.database.osbdt:osbdt-config-plugin:1.0.251224")
+        classpath("com.oracle.database.osbdt:osbdt-config-plugin:{version}")
     }
 }
 ```
@@ -306,16 +289,13 @@ Instrumented tests and coverage:
 ```
 Reports are generated under osbdt/build/reports/jacoco.
 
-## Publishing (internal)
+## Contributing
 
-Artifacts are published to:
-- https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-dev-local
+This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTION.md)
 
-Coordinates:
-- Library: com.oracle.database.osbdt:osbdt-android-sdk:$VERSION
-- Gradle plugin: com.oracle.database.osbdt:osbdt-config-plugin:$VERSION
+## Security
 
-Ensure ARTIFACTORY_USERNAME and ARTIFACTORY_PASSWORD are set, or define artifactoryUsername/artifactoryPassword in gradle.properties.
+Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
 
 ## Troubleshooting
 
