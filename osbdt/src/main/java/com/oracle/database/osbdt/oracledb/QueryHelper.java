@@ -862,7 +862,9 @@ class QueryHelper {
 
         if (!Objects.equals(operation.getTransactionName(), "")
             &&
-            !Objects.equals(operation.getVersion(), TransactionOperation.DOES_NOT_EXIST_VERSION)) {
+            !Objects.equals(operation.getVersion(), TransactionOperation.DOES_NOT_EXIST_VERSION)
+            &&
+            operation.getVersion() != null) {
             payloadBuilder.add("version", String.valueOf(operation.getVersion()));
         }
 

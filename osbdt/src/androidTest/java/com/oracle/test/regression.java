@@ -47,11 +47,14 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidJUnit4.class)
@@ -7328,4 +7331,428 @@ public class regression {
         }
     }
 
+    @Test
+    public void testAddNewCollectionDocument() throws Exception {
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"city4"};
+            addSecurityRule(collections);
+
+            CollectionReference cityCollection = db.collection("city4");
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("name", "Bhopal");
+            data.put("country", "India");
+            data.put("state", "Madhya Pradesh1");
+            data.put("capital", false);
+            data.put("population", 200000);
+            data.put("regions", Arrays.asList("North"));
+
+            DocumentReference resAddDoc = await(cityCollection.add(data));
+            String docId = resAddDoc.getId();
+            assertNotNull(docId);
+            assertTrue(docId instanceof String);
+            Log.d("OracleDbTests", "Added document ID: " + docId);
+
+            // Retrieve the document to check if it was added correctly
+            DocumentSnapshot addedDoc = await(cityCollection.document(docId).get());
+            assertTrue(addedDoc.exists());
+            assertEquals("Bhopal", addedDoc.getString("name"));
+            assertEquals("India", addedDoc.getString("country"));
+            Log.d("OracleDbTests", "Data added: " + addedDoc.getData());
+
+            await(cityCollection.document(docId).delete());
+            Log.d("OracleDbTests", "Test document deleted: " + docId);
+        }
+    }
+
+    @Test
+    public void testUseSetWithMergeInRunTransaction() throws Exception {
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"city4"};
+            addSecurityRule(collections);
+
+            CollectionReference cityCollection = db.collection("city4");
+
+            DocumentReference cityRef = cityCollection.document("TOK");
+
+            await(cityRef.set(new HashMap<String, Object>() {{
+                put("name", "Tokyo");
+                put("country", "Japan");
+                put("population", 9000000);
+            }}));
+
+            await(db.runTransaction(transaction -> {
+                transaction.set(cityRef, new HashMap<String, Object>() {{
+                    put("capital", false);
+                }}, SetOptions.merge());
+                return null;
+            }));
+
+            DocumentSnapshot updatedDoc = await(cityRef.get());
+            Log.d("OracleDbTests", "Updated document: " + updatedDoc.getData());
+
+            assertTrue(updatedDoc.getData().containsKey("name"));
+            assertEquals("Tokyo", updatedDoc.getString("name"));
+            assertEquals("Japan", updatedDoc.getString("country"));
+            assertEquals(Long.valueOf(9000000L), updatedDoc.getLong("population"));
+            assertEquals(true, updatedDoc.getBoolean("capital")); // Newly added
+
+            await(cityRef.delete());
+        }
+    }
+
+    @Test
+    public void testScenarioFieldPathInNestedOperations() throws Exception {
+
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"city10"};
+            addSecurityRule(collections);
+
+            CollectionReference cityCollection = db.collection("city10");
+
+            // Setup: Create nested company data
+            Map<String, Object> companyData = new HashMap<>();
+            companyData.put("companyName", "TechCorp");
+
+            Map<String, Object> hrDept = new HashMap<>();
+            hrDept.put("manager", "Alice Johnson");
+            hrDept.put("employees", Arrays.asList("Bob", "Charlie"));
+            hrDept.put("budget", 50000L);
+
+            Map<String, Object> itDept = new HashMap<>();
+            itDept.put("manager", "David Smith");
+            itDept.put("employees", Arrays.asList("Eve", "Frank"));
+            itDept.put("budget", 75000L);
+
+            Map<String, Object> departments = new HashMap<>();
+            departments.put("hr", hrDept);
+            departments.put("it", itDept);
+
+            companyData.put("departments", departments);
+            companyData.put("totalBudget", 125000L);
+
+            DocumentReference companyRef = cityCollection.document("company_scenario");
+            await(companyRef.set(companyData));
+
+            // Scenario 1: Query using FieldPath for nested fields
+            QuerySnapshot hrManagers = await(cityCollection
+                    .whereEqualTo(FieldPath.of("departments", "hr", "manager"), "Alice Johnson")
+                    .get());
+
+            assertEquals("Should find the company with Alice as HR manager", 1, hrManagers.size());
+
+            // Scenario 2: Update nested field using FieldPath
+            await(companyRef.update(FieldPath.of("departments", "it", "budget"), 80000L));
+            await(companyRef.update(FieldPath.of("departments", "hr", "employees"), FieldValue.arrayUnion("Grace")));
+
+
+            DocumentSnapshot updatedCompany = await(companyRef.get());
+            Log.d("Document", "Updated Company" + updatedCompany.getData());
+            Map<String, Object> updatedDepts = (Map<String, Object>) updatedCompany.get("departments");
+            Map<String, Object> updatedIT = (Map<String, Object>) updatedDepts.get("it");
+            Map<String, Object> updatedHR = (Map<String, Object>) updatedDepts.get("hr");
+
+            assertEquals("IT budget should be updated", 80000L, updatedIT.get("budget"));
+            assertTrue("HR should have new employee", ((List<String>) updatedHR.get("employees")).contains("Grace"));
+
+            // Scenario 3: Filter on nested array field
+            QuerySnapshot companiesWithEve = await(cityCollection
+                    .whereArrayContains(FieldPath.of("departments", "it", "employees"), "Eve")
+                    .get());
+
+            assertEquals("Should find company with Eve in IT", 1, companiesWithEve.size());
+
+            // Cleanup
+            await(companyRef.delete());
+        }
+    }
+
+    @Test
+    public void testShouldInsertAndRetrieveAllDataTypes() throws Exception {
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"city10"};
+            addSecurityRule(collections);
+
+            CollectionReference cityCollection = db.collection("city10");
+
+            // Step 1: Create document with all data types
+            Map<String, Object> testData = new HashMap<>();
+            testData.put("stringField", "Hello World");
+            testData.put("intField", 42);
+            testData.put("longField", 1234567890123L);
+            testData.put("doubleField", 3.14159);
+            testData.put("booleanField", true);
+            testData.put("nullField", null);
+            testData.put("timestampField", new java.sql.Timestamp(System.currentTimeMillis()));
+            testData.put("arrayField", Arrays.asList("item1", "item2", 3, true));
+            testData.put("nestedObject", new HashMap<String, Object>() {{
+                put("nestedString", "nested value");
+                put("nestedNumber", 99);
+                put("nestedArray", Arrays.asList(1, 2, 3));
+            }});
+            testData.put("complexArray", Arrays.asList(
+                    new HashMap<String, Object>() {{
+                        put("name", "Object 1");
+                        put("value", 100);
+                    }},
+                    new HashMap<String, Object>() {{
+                        put("name", "Object 2");
+                        put("value", 200);
+                    }}
+            ));
+
+            DocumentReference docRef = cityCollection.document("dataTypesTest");
+            await(docRef.set(testData));
+
+            // Step 2: Retrieve the document
+            DocumentSnapshot retrievedDoc = await(docRef.get());
+            assertTrue("Document should exist", retrievedDoc.exists());
+
+            Map<String, Object> retrievedData = retrievedDoc.getData();
+            Log.d("OracleDbTests", "Retrieved document with all data types: " + retrievedData);
+
+            // Step 3: Assert all data types are correctly stored and retrieved
+            assertEquals("String field should match", "Hello World", retrievedData.get("stringField"));
+            assertEquals("Int field should match", 42L, retrievedData.get("intField"));
+            assertEquals("Long field should match", 1234567890123L, retrievedData.get("longField"));
+            assertEquals("Double field should match", 3.14159, retrievedData.get("doubleField"));
+            assertEquals("Boolean field should match", true, retrievedData.get("booleanField"));
+            assertNull("Null field should be null", retrievedData.get("nullField"));
+            assertNotNull("Timestamp field should not be null", retrievedData.get("timestampField"));
+
+            // Assert array field
+            List<?> arrayField = (List<?>) retrievedData.get("arrayField");
+            assertEquals("Array should have 4 elements", 4, arrayField.size());
+            assertEquals("First array element", "item1", arrayField.get(0));
+            assertEquals("Second array element", "item2", arrayField.get(1));
+            assertEquals("Third array element", 3L, arrayField.get(2));
+            assertEquals("Fourth array element", true, arrayField.get(3));
+
+            // Assert nested object
+            Map<String, Object> nestedObject = (Map<String, Object>) retrievedData.get("nestedObject");
+            assertEquals("Nested string should match", "nested value", nestedObject.get("nestedString"));
+            assertEquals("Nested number should match", 99L, nestedObject.get("nestedNumber"));
+            List<?> nestedArray = (List<?>) nestedObject.get("nestedArray");
+            assertEquals("Nested array should have 3 elements", 3, nestedArray.size());
+
+            // Assert complex array
+            List<?> complexArray = (List<?>) retrievedData.get("complexArray");
+            assertEquals("Complex array should have 2 elements", 2, complexArray.size());
+            Map<String, Object> firstObject = (Map<String, Object>) complexArray.get(0);
+            assertEquals("First object name", "Object 1", firstObject.get("name"));
+            assertEquals("First object value", 100L, firstObject.get("value"));
+
+            Log.d("OracleDbTests", "All data types successfully stored and retrieved");
+
+            // Step 4: Cleanup
+            await(docRef.delete());
+        }
+    }
+
+    @Test
+    public void testUsersRelationalCollectionTwoUpdatesWith2Latch() throws Exception {
+
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"Users"};
+            addSecurityRule(collections);
+
+            String[] credentials = getNewUserCredentials();
+            String email = credentials[0];
+            String password = credentials[1];
+
+            await(auth.createUserWithEmailAndPassword(email, password));
+
+            Thread.sleep(1200);
+            CollectionReference usersCollection = db.collection("Users");
+            await(usersCollection.get());
+            Thread.sleep(600);
+
+            // Step 1 — Create a random relational document
+            int random = (int) (Math.random() * 100000);
+            String name = "user_" + random;
+            int age = 20;
+            String about = "initial";
+
+            DocumentReference userRef = await(usersCollection.add(new HashMap<String, Object>() {{
+                put("name", name);
+                put("age", age);
+                put("about", about);
+                put("_id", random);
+            }}));
+
+            String docId = userRef.getId();
+            assertNotNull(docId);
+
+            // Step 2 — Setup two latches for two updates
+            CountDownLatch firstUpdateLatch = new CountDownLatch(1);
+            CountDownLatch secondUpdateLatch = new CountDownLatch(1);
+
+            List<String> aboutUpdates = Collections.synchronizedList(new ArrayList<>());
+
+            // Step 3 — Attach listener on the RELATIONAL document
+            ListenerRegistration reg = usersCollection.document(docId).addSnapshotListener(
+                    Executors.newSingleThreadExecutor(),
+                    (snapshot, error) -> {
+
+                        // Ignore OBaaS internal polling errors
+                        if (snapshot == null || !snapshot.exists()) return;
+
+                        String updatedAbout = snapshot.getString("about");
+
+                        // Ignore initial "about"
+                        if (updatedAbout == null || updatedAbout.equals("initial")) return;
+
+                        aboutUpdates.add(updatedAbout);
+
+                        if (updatedAbout.equals("update1")) {
+                            firstUpdateLatch.countDown();
+                        }
+
+                        if (updatedAbout.equals("update2")) {
+                            secondUpdateLatch.countDown();
+                        }
+                    }
+            );
+
+            Thread.sleep(800); // Ensure listener attached
+
+            // Step 4 — FIRST UPDATE
+            await(usersCollection.document(docId).update("about", "update1"));
+
+            assertTrue("First update not received (about=update1)",
+                    firstUpdateLatch.await(20, TimeUnit.SECONDS));
+
+            Thread.sleep(400);
+
+            // Step 5 — SECOND UPDATE
+            await(usersCollection.document(docId).update("about", "update2"));
+
+            assertTrue("Second update not received (about=update2)",
+                    secondUpdateLatch.await(20, TimeUnit.SECONDS));
+
+            reg.remove();
+
+            // Validate values received in correct order
+            assertEquals("Should have exactly 2 updates", 2, aboutUpdates.size());
+            assertEquals("update1", aboutUpdates.get(0));
+            assertEquals("update2", aboutUpdates.get(1));
+
+            // Cleanup
+            await(usersCollection.document(docId).delete());
+
+            deleteUser(email);
+        }
+    }
+
+    @Test
+    public void testShouldAddAndUpdateADocumentInTheUsersRelationalCollectionWithRandomValues() throws Exception {
+
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"Users"};
+            addSecurityRule(collections);
+
+            String[] credentials = getNewUserCredentials();
+            String email = credentials[0];
+            String password = credentials[1];
+
+            await(auth.createUserWithEmailAndPassword(email, password));
+
+            CollectionReference usersCollection = db.collection("Users");
+
+            int randomNum = (int) (Math.random() * 1000000);
+            String randomName = "user_" + randomNum;
+            int randomAge = (int) (Math.random() * 60) + 10; // Age between 10–70
+            String randomAbout = "About " + randomName;
+            String randomUUID = String.valueOf(randomNum);
+
+            DocumentReference userRef = await(usersCollection.add(new HashMap<String, Object>() {{
+                put("name", randomName);
+                put("age", randomAge);
+                put("about", randomAbout);
+                put("_id", randomUUID);
+            }}));
+
+            String docId = userRef.getId();
+            assertNotNull("Document ID should be a string", docId);
+            Log.d("OracleDbTests", "Added document ID: " + docId);
+
+            DocumentSnapshot docSnapshot = await(usersCollection.document(docId).get());
+            assertTrue("Document should exist", docSnapshot.exists());
+            Map<String, Object> data = docSnapshot.getData();
+            assertEquals("Name should match", randomName, data.get("name"));
+            assertEquals("Age should match", Long.valueOf(randomAge), data.get("age"));
+            assertEquals("About should match", randomAbout, data.get("about"));
+            assertEquals("_id should match", Long.valueOf(randomNum), data.get("_id"));
+            Log.d("OracleDbTests", "Data after add: " + data);
+
+            int updatedAge = randomAge + 5;
+            String updatedAbout = "Updated " + randomName;
+            Map<String, Object> updateData = new HashMap<>();
+            updateData.put("age", updatedAge);
+            updateData.put("about", updatedAbout);
+
+            await(usersCollection.document(docId).update(updateData));
+            Log.d("OracleDbTests", "Updated document ID: " + docId);
+
+            docSnapshot = await(usersCollection.document(docId).get());
+            assertTrue("Document should exist", docSnapshot.exists());
+            data = docSnapshot.getData();
+            assertEquals("Name should still match", randomName, data.get("name"));
+            assertEquals("Updated age should match", Long.valueOf(updatedAge), data.get("age"));
+            assertEquals("Updated about should match", updatedAbout, data.get("about"));
+            assertEquals("_id should still match", Long.valueOf(randomUUID), data.get("_id"));
+            Log.d("OracleDbTests", "Data after update: " + data);
+
+            await(usersCollection.document(docId).delete());
+            Log.d("OracleDbTests", "Test document deleted: " + docId);
+
+            deleteUser(email);
+        }
+    }
+
+    @Test
+    public void testJoinConnection_shouldReturnJoinResults() throws Exception {
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"Users"};
+            addSecurityRule(collections);
+
+            String[] credentials = getNewUserCredentials();
+            String email = credentials[0];
+            String password = credentials[1];
+
+            await(auth.createUserWithEmailAndPassword(email, password));
+
+            var res = db
+                    .join("EMP_DEPT_JOIN")
+                    .get();
+
+            System.out.println("Docs count: " + res.getResult());
+
+            assertNotNull(res.toString());
+            assertTrue(res.getResult().size() > 0);
+
+            deleteUser(email);
+        }
+    }
 }

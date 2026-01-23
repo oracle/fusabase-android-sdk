@@ -39,7 +39,7 @@ publishing {
     repositories {
         maven {
             name = "artifactory"
-            url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-dev-local")
+            url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-release-local")
             credentials {
                 username = project.findProperty("artifactoryUsername")?.toString()
                     ?: System.getenv("ARTIFACTORY_USERNAME")
