@@ -106,7 +106,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.oracle.database.osbdt:osbdt-config-plugin:{version}")
+        classpath("com.oracle.database.osbdt:gradle-config:{version}")
     }
 }
 ```
