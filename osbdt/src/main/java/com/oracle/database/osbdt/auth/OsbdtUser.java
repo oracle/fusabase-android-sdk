@@ -27,6 +27,8 @@
 package com.oracle.database.osbdt.auth;
 
 
+import static com.oracle.database.osbdt.auth.Config.IDCS_AUTH_TYPE;
+
 import android.app.Activity;
 
 import androidx.annotation.NonNull;
@@ -39,6 +41,7 @@ import com.oracle.database.osbdt.task.TaskCompletionSource;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import jakarta.json.JsonObject;
 
@@ -97,6 +100,7 @@ public abstract class OsbdtUser implements UserInfo {
 
     protected abstract @NonNull String getRefreshToken();
 
+    protected abstract @NonNull String getAccessToken();
     /**
      * Returns the display name of the user.
      *
@@ -152,7 +156,7 @@ public abstract class OsbdtUser implements UserInfo {
                     this.auth.informIdTokenSubscribers();
                 }
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(e);
             }
             return "";
         });
@@ -310,6 +314,36 @@ public abstract class OsbdtUser implements UserInfo {
         return this.auth.signInWithCredentialLinking(credential, true);
     }
 
+    /**
+     * Starts an activity to link the current user with a federated authentication provider
+     * using the Custom Tabs flow. This method initiates the authentication process in a
+     * browser-like interface to allow the user to authenticate with the specified provider
+     * and link their account to the current user.
+     *
+     * @param activity the Android Activity that will host the Custom Tab
+     * @param federatedAuthProvider the federated authentication provider to link with
+     * @return a Task containing the AuthResult upon successful linking
+     * @throws IllegalArgumentException if IDCS auth type is used with IDCS provider
+     */
+    @NonNull
+    public Task<AuthResult> startActivityForLinkWithProvider (
+            @NonNull Activity activity,
+            @NonNull FederatedAuthProvider federatedAuthProvider) {
+
+        if(this.config.authType.equals(IDCS_AUTH_TYPE))
+        {
+            if(federatedAuthProvider instanceof IDCSAuthProvider)
+                throw new IllegalArgumentException("IDCS Auth Type not supported for linking");
+        }
+
+        return SocialLoginActivity.createCustomTabForSignInWithProvider(
+                this.auth.getApp(),
+                activity,
+                federatedAuthProvider,
+                this.auth.authHelper,
+                true
+        );
+    }
     /**
      * Detaches credentials from a given provider type from this user.
      *

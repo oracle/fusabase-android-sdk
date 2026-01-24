@@ -453,19 +453,6 @@ class QueryHelper {
         List<String> servertimestamp = new ArrayList<>();
 
         updates.forEach((key, value) -> {
-            // Handle nested path for FieldValue
-            if (key.contains(".") && value instanceof FieldValue) {
-                String[] parts = key.split("\\.", 2);
-                String firstPart = parts[0];
-                String remaining = parts[1];
-                String secondPart = remaining.split("\\.")[0];
-                HashMap<String, Object> nestedRequest = new HashMap<>();
-                nestedRequest.put("field", firstPart);
-                nestedRequest.put("value", "{" + secondPart + " : {}}");
-                nestedRequest.put("op", "set");
-                updatedFormat.add(nestedRequest);
-            }
-
             HashMap<String, Object> request = new HashMap<>();
             request.put("field", key);
             if (value instanceof FieldValue) {

@@ -30,6 +30,7 @@ import static com.oracle.database.osbdt.auth.OsbdtAuth.LOGGED_IN_USER_KEY;
 import static com.oracle.database.osbdt.auth.OsbdtAuth.PREFERENCES_NAME;
 
 import android.content.Context;
+import android.os.Parcel;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.security.GeneralSecurityException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -148,6 +150,7 @@ abstract class AuthHelper {
         String codeVerifier = "";
         String providerId = "";
         String data = "";
+        boolean link = false;
         try {
             data = authHelper.readDataFromPreferences(authHelper
                             .getOsbdtAuth()
@@ -166,6 +169,11 @@ abstract class AuthHelper {
                             .getApp()
                             .getApplicationContext(),
                     "osbdt_AUTH_PROVIDER_ID");
+            link = Boolean.parseBoolean(authHelper.readDataFromPreferences(authHelper
+                            .getOsbdtAuth()
+                            .getApp()
+                            .getApplicationContext(),
+                    "osbdt_IS_LINK"));
 
         } catch (Exception e) {
             OsbdtLogger.d(TAG, "Unable to get callback data from the preferences " + e.getMessage());
@@ -197,6 +205,11 @@ abstract class AuthHelper {
                                 .getApp()
                                 .getApplicationContext(),
                         "osbdt_CALLBACK_DATA");
+                authHelper.deleteDataFromPreferences(authHelper
+                                .getOsbdtAuth()
+                                .getApp()
+                                .getApplicationContext(),
+                        "osbdt_IS_LINK");
             } catch (Exception e) {
                 OsbdtLogger.d(TAG, "Unable to clear earlier login data in the preferences " + e.getMessage());
             }
@@ -213,15 +226,22 @@ abstract class AuthHelper {
 
             JsonObject responseObject;
             JsonObject userDetails;
+            JsonObject credentialResponse = Json.createObjectBuilder().build();
             try {
                 responseObject = authHelper.performCodeExchange(authCode, codeVerifier);
+                if(link)
+                {
+                    AuthCredential authCredential = getAuthCredential(providerId, responseObject);
+                    responseObject = authHelper.signInWithCredentialHelper(authCredential, link);
+                }
+
                 userDetails = authHelper.getUserDetails(
                         new GetTokenResult(
                                 new IdToken(
                                         responseObject.getString("access_token"), "base")));
             } catch (OsbdtException e) {
                 OsbdtLogger.e("Cannot perform code exchange or error parsing the token."+ e.getMessage());
-                throw new RuntimeException(e);
+                throw new CompletionException(e);
             }
 
             final JsonObject userData = Json.createObjectBuilder()
@@ -253,17 +273,20 @@ abstract class AuthHelper {
                 }
             };
 
-            authHelper.getOsbdtAuth().currentUser = result.getUser();
+            // No need to set current User as the values are same
+            if(!link) {
+                authHelper.getOsbdtAuth().currentUser = result.getUser();
 
-            try {
-                authHelper.saveUserDetails(authHelper
-                                .getOsbdtAuth()
-                                .getApp()
-                                .getApplicationContext(),
-                        userData, PREFERENCES_NAME);
-                OsbdtLogger.d(TAG, "Stored user data in preferences");
-            } catch (Exception e) {
-                OsbdtLogger.d(TAG, "Unable to store user data in the preferences");
+                try {
+                    authHelper.saveUserDetails(authHelper
+                                    .getOsbdtAuth()
+                                    .getApp()
+                                    .getApplicationContext(),
+                            userData, PREFERENCES_NAME);
+                    OsbdtLogger.d(TAG, "Stored user data in preferences");
+                } catch (Exception e) {
+                    OsbdtLogger.d(TAG, "Unable to store user data in the preferences");
+                }
             }
 
             taskSource.setResult(result);
@@ -273,6 +296,39 @@ abstract class AuthHelper {
             if(future != null)
                 future.complete("");
         }
+    }
+    @NonNull
+    private static AuthCredential getAuthCredential(String providerId, JsonObject responseObject) {
+        final String providerName = providerId;
+        AuthCredential authCredential = new AuthCredential() {
+            @NonNull
+            @Override
+            public String getProvider() {
+                return providerName;
+            }
+
+            @NonNull
+            @Override
+            public String getSignInMethod() {
+                return providerName;
+            }
+
+            @NonNull
+            @Override
+            protected String getIdToken() {
+                return responseObject.getString("id_token");
+            }
+
+            @Override
+            public int describeContents() {
+                return 0;
+            }
+
+            @Override
+            public void writeToParcel(@NonNull Parcel parcel, int i) {
+            }
+        };
+        return authCredential;
     }
 
     protected void saveUserDetails (@NonNull Context context,

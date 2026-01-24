@@ -326,7 +326,6 @@ public class TransactionTest {
 //                transaction.get(docRef); // read after write (should throw)
 //                return null;
 //            }));
-//            fail("Expected failure because Firestore requires all reads before any writes");
 //        } catch (Exception e) {
 //            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
 //            assertTrue(

@@ -263,7 +263,6 @@ public class QueryTest {
         Query query = testCollection.whereGreaterThan("nonExistingField", 0);
 
         query.get().addOnSuccessListener(snapshot -> {
-            // With Firestore, this just produces no results, no error
             assertTrue(snapshot.isEmpty());
             latch.countDown();
         });
@@ -427,7 +426,6 @@ public class QueryTest {
 
         CollectionReference cityRef = testCollection;
 
-        // Adding test data to Firestore (ensure correct population values for pagination)
         await(cityRef.document("LA").set(new HashMap<String, Object>() {{
             put("name", "Los Angeles");
             put("state", "CA");

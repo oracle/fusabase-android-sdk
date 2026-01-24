@@ -24,7 +24,7 @@
 //
 //-----------------------------------------------------------------------------
 
-package com.oracle.database;
+package com.oracle.database.osbdt;
 
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;

@@ -59,7 +59,7 @@ Add the library dependency to your app/library module:
 build.gradle.kts (module)
 ```kotlin
 dependencies {
-    implementation("com.oracle.database.osbdt:osbdt-android-sdk:1.0.251224")
+    implementation("com.oracle.database.osbdt:osbdt-android-sdk:1.0.260124")
 }
 ```
 
@@ -111,7 +111,7 @@ This plugin converts osbdt-config.json into Android string resources at build ti
 build.gradle.kts (app module)
 ```kotlin
 plugins {
-    id("com.oracle.database.osbdt.osbdt-config-plugin")
+    id("com.oracle.database.osbdt.gradle-config")
 }
 ```
 build.gradle.kts (project)
@@ -123,7 +123,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.oracle.database.osbdt:osbdt-config-plugin:1.0.251224")
+        classpath("com.oracle.database.osbdt:gradle-config:1.0.260124")
     }
 }
 ```
@@ -131,7 +131,7 @@ Alternative (legacy) classpath approach if you cannot use pluginManagement:
 
 build.gradle.kts (app module)
 ```kotlin
-apply(plugin = "com.oracle.database.osbdt.osbdt-config-plugin")
+apply(plugin = "com.oracle.database.osbdt.gradle-config")
 ```
 
 ## Quickstart
@@ -282,7 +282,7 @@ The SDK auto-registers a content provider:
 
 For social login via redirect, add the activity and scheme (if used):
 ```xml
-<activity android:name="com.oracle.database.auth.SocialLoginActivity"
+<activity android:name="com.oracle.database.osbdt.auth.SocialLoginActivity"
     android:exported="true">
     <intent-filter>
         <action android:name="android.intent.action.VIEW"/>
@@ -313,7 +313,7 @@ Artifacts are published to:
 
 Coordinates:
 - Library: com.oracle.database.osbdt:osbdt-android-sdk:$VERSION
-- Gradle plugin: com.oracle.database.osbdt:osbdt-config-plugin:$VERSION
+- Gradle plugin: com.oracle.database.osbdt:gradle-config:$VERSION
 
 Ensure ARTIFACTORY_USERNAME and ARTIFACTORY_PASSWORD are set, or define artifactoryUsername/artifactoryPassword in gradle.properties.
 

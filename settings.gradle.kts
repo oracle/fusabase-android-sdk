@@ -2,7 +2,6 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://artifacthub-iad.oci.oraclecorp.com/parfaitsuite-release")
     }
 }
 dependencyResolutionManagement {
@@ -11,7 +10,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        maven("https://artifacthub-iad.oci.oraclecorp.com/parfaitsuite-release")
     }
 }
 

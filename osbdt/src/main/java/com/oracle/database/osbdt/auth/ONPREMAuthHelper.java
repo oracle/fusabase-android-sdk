@@ -26,6 +26,10 @@
 
 package com.oracle.database.osbdt.auth;
 
+import static com.oracle.database.osbdt.task.Tasks.await;
+
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 
 import com.oracle.database.osbdt.OsbdtException;
@@ -220,9 +224,6 @@ class ONPREMAuthHelper extends AuthHelper {
                 "to osbdt");
 
         String providerId = authCredential.getProvider();
-        if(authCredential instanceof EmailAuthCredential)
-            providerId = "UserNamePassword";
-
         Map<String, String> headers = new HashMap<>();
 
         if(link)
@@ -256,8 +257,6 @@ class ONPREMAuthHelper extends AuthHelper {
 
         HttpRequestHelper requestHelper = new HttpRequestHelper();
 
-
-
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.config.getAppId());
         queryParameters.put("method", providerId.split("\\.")[0]);
@@ -285,8 +284,8 @@ class ONPREMAuthHelper extends AuthHelper {
                 JsonObject result = reader.readObject();
                 reader.close();
                 return Json.createObjectBuilder()
-                    .add("access_token", result.getString("access_token"))
-                    .add("refresh_token", result.getString("refresh_token"))
+                    .add("access_token", link ? auth.getCurrentUser().getAccessToken(): result.getString("access_token"))
+                    .add("refresh_token", link ? auth.getCurrentUser().getRefreshToken(): result.getString("refresh_token"))
                     .build();
             }
             OsbdtLogger.e(TAG, "Cannot authenticate user with credential with providerId "
@@ -637,16 +636,22 @@ class ONPREMAuthHelper extends AuthHelper {
 
         OsbdtLogger.d(TAG, "Sending request to verify password reset code from osbdt");
 
+        String storedEmail = this.readDataFromPreferences(
+                this.auth.getApp().getApplicationContext(), "password_reset_email");
+        if (storedEmail == null || storedEmail.isEmpty()) {
+            throw new OsbdtException("No password reset request found. Please request a password reset first.");
+        }
+
         JsonObject payload = Json.createObjectBuilder()
                 .add("password", newPassword)
+                .add("code", code)
                 .build();
 
         HttpRequestHelper requestHelper = new HttpRequestHelper();
 
         Map<String, String> queryParameters = new HashMap<>();
         queryParameters.put("apiKey", this.config.getAppId());
-        queryParameters.put("code", code);
-        queryParameters.put("requesttype", "resetpwd");
+        queryParameters.put("email", storedEmail);
 
 
         Map<String, String> headers = new HashMap<>();
@@ -672,7 +677,6 @@ class ONPREMAuthHelper extends AuthHelper {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
             throw new OsbdtNetworkException("Network error encountered due to " + e.getCause());
         }
-
 
         if (response.getStatus()) {
             OsbdtLogger.i("OsbdtAuth", "Confirm password reset email request sent successfully.");

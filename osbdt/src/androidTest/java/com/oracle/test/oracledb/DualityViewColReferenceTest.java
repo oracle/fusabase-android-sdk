@@ -728,7 +728,7 @@ public class DualityViewColReferenceTest {
 
 
 //DROP TABLE dept CASCADE CONSTRAINTS;
-//
+//DROP TABLE emp CASCADE CONSTRAINTS;
 //
 //create table dept (
 //        deptno number(2) constraint pk_dept primary key,
@@ -746,7 +746,7 @@ public class DualityViewColReferenceTest {
 //comm number(7,2),
 //deptno number(2) constraint fk_deptno references dept
 //);
-
+//
 //insert into dept values (10,'ACCOUNTING','NEW YORK');
 //insert into dept values (20,'RESEARCH','DALLAS');
 //insert into dept values (30,'SALES','CHICAGO');
@@ -779,7 +779,7 @@ public class DualityViewColReferenceTest {
 //        '{"conditions": "1=1","type": [],"field": [],"operation":[]}',
 //        '{"conditions": "1=1","type": [],"field": [],"operation":[]}'
 //);
-
+//
 //create or replace json relational duality view department_dv as
 //select json {'_id' : d.deptno,
 //        'OID' : SYS_MAKE_OID_FROM_PK(d.deptno),
@@ -796,7 +796,7 @@ public class DualityViewColReferenceTest {
 //from dept d with insert update delete;
 //
 //commit;
-
+//
 //DECLARE
 //req varchar2(100) := '{"dv_name":"department_dv","OID":"FB03C11800"}';
 //data varchar2(1000) := '{ "_id" : 23,"departmentName":"mohit","location" : "ww", "employees" : [{"employeeNumber" : 12,"employeeName" : "MOHIT","job":"CLERK","salary" : 22}]}';

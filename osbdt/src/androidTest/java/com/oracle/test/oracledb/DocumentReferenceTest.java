@@ -400,7 +400,6 @@ public class DocumentReferenceTest {
 
         // Step 4: Assertions
         assertTrue("Should have timestamp property", updatedData.containsKey("timestamp"));
-        // In Java/Android Firebase, timestamp is typically a Timestamp object
         assertTrue("Timestamp should be instance of Date", updatedData.get("timestamp") instanceof Date);
 
         Log.d("OracleDbTests", "Timestamp successfully updated and validated: " + updatedData.get("timestamp"));
