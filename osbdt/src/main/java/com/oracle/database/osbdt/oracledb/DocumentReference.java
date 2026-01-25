@@ -51,6 +51,7 @@ import java.util.concurrent.Executor;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
+import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonString;
@@ -327,8 +328,10 @@ public class DocumentReference extends EntityReference {
                         null,
                         this,
                         new TransactionOperation());
-                this.version = result.get("VERSION").toString();
-                this.documentId = result.get("OID").toString();
+                this.version = result.get("VERSION") instanceof JsonNumber ?
+                        result.get("VERSION").toString() :
+                        result.getString("VERSION");
+                this.documentId = result.getString("OID");
             } catch (Exception e) {
                 Exception exception = e;
                 if(!(exception instanceof OsbdtOracledbException))
@@ -518,7 +521,7 @@ public class DocumentReference extends EntityReference {
                     throw new OsbdtOracledbException("Cannot perform delete operation on the document which has " +
                         "not been generated yet.", OsbdtOracledbException.Code.INVALID_ARGUMENT);
                 JsonObject result = this.queryHelper.removeDocs(this.path, this, new TransactionOperation());
-                this.documentId = result.get("OID").toString();
+                this.documentId = result.getString("OID");
             } catch (Exception e) {
                 Exception exception = e;
                 if(!(exception instanceof OsbdtOracledbException))
@@ -573,8 +576,10 @@ public class DocumentReference extends EntityReference {
                         options,
                         this,
                         new TransactionOperation());
-                this.version = result.get("VERSION").toString();
-                this.documentId = result.get("OID").toString();
+                this.version = result.get("VERSION") instanceof JsonNumber ?
+                        result.get("VERSION").toString() :
+                        result.getString("VERSION");
+                this.documentId = result.getString("OID");
             } catch (OsbdtException e) {
                 throw new CompletionException(e);
             }
@@ -604,22 +609,11 @@ public class DocumentReference extends EntityReference {
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
                 updatePathIfNecessary();
-                int arrayUnionCount = 0;
                 for(Map.Entry<String, Object> entry : data.entrySet())
                  {
                     if (!checkIfFieldIsCorrect(entry.getKey()))
                         throw new OsbdtOracledbException("Invalid field name  " + entry.getKey() + "provided in update.",
                             OsbdtOracledbException.Code.INVALID_ARGUMENT);
-                    if (entry.getValue() instanceof FieldValue) {
-                        FieldValue fv = (FieldValue) entry.getValue();
-                        if (fv.getOperation() == FieldValue.Operation.ARRAY_UNION) {
-                            arrayUnionCount++;
-                            if (arrayUnionCount > 1) {
-                                throw new OsbdtOracledbException("Only one FieldValue.arrayUnion operation is allowed per update call.",
-                                    OsbdtOracledbException.Code.INVALID_ARGUMENT);
-                            }
-                        }
-                    }
                 }
 
                 if(isOidNotGenerated())
@@ -630,8 +624,10 @@ public class DocumentReference extends EntityReference {
                         data,
                         this,
                         new TransactionOperation(), null);
-                this.version = result.get("VERSION").toString();
-                this.documentId = result.get("OID").toString();
+                this.version = result.get("VERSION") instanceof JsonNumber ?
+                        result.get("VERSION").toString() :
+                        result.getString("VERSION");
+                this.documentId = result.getString("OID");
             } catch (Exception e) {
                 Exception exception = e;
                 if(!(exception instanceof OsbdtOracledbException))

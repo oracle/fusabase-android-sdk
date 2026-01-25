@@ -81,7 +81,6 @@
 //        assertEquals("microsoft.com", PROVIDER_ID);
 //    }
 //
-//    // ---------- Firebase Auth Integration ----------
 //
 //    @Test
 //    public void testSignInWithOAuthProvider() {

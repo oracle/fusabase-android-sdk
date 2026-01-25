@@ -72,7 +72,6 @@
 //        assertNotNull(user.getUid());
 //        assertEquals("identity@example.com", user.getEmail());
 //        assertFalse(user.isAnonymous());
-//        assertEquals("firebase", user.getProviderId()); // top-level Firebase provider
 //    }
 //
 //    @Test

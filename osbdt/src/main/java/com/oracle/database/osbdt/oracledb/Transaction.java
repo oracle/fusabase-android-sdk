@@ -250,10 +250,16 @@ public class Transaction {
     public Transaction set(@NonNull DocumentReference documentRef, @NonNull Object data,
                            @NonNull SetOptions options) {
         Objects.requireNonNull(documentRef, "DocumentReference cannot be null");
+
         if (options.isMerge() &&
                 Objects.equals(this.versions.get(documentRef.getPath()), TransactionOperation.DOES_NOT_EXIST_VERSION))
             throw new IllegalStateException("The document referred by path " +
                     documentRef.getPath() + " doesn't exists.");
+
+        if (options.isMerge() && !this.versions.containsKey(documentRef.getPath())) {
+            throw new IllegalStateException("Please perform a get operation on " +
+                    documentRef.getPath() + " before performing any write operation.");
+        }
 
         operations.add(new WriteOperation(WriteOperation.OperationType.SET,
                 documentRef,

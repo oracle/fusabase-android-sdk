@@ -37,11 +37,11 @@ public class EmailAuthProvider {
     /**
      * Email password sign in method Id
      */
-    public static final String EMAIL_PASSWORD_SIGN_IN_METHOD = "password";
+    public static final String EMAIL_PASSWORD_SIGN_IN_METHOD = "epw";
     /**
      * Provider Id
      */
-    public static final String PROVIDER_ID = "password";
+    public static final String PROVIDER_ID = "epw";
 
     /**
      * Method to get the Auth credential for the provided email and password

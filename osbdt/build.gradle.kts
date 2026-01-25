@@ -4,7 +4,6 @@ plugins {
     id("jacoco")
     id("maven-publish")
     id("signing")
-    id("oracle.parfait.android") version "2.4.29"
 }
 
 android {
@@ -105,17 +104,13 @@ dependencies {
     implementation("org.glassfish:jakarta.json:2.0.1")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.8")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.0")
 
-    testImplementation("org.mockito:mockito-core:4.0.0")
-    testImplementation("org.mockito:mockito-inline:4.0.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.1")
 
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation("org.mockito:mockito-android:4.0.0")
 
 }
 
@@ -141,11 +136,11 @@ publishing {
     repositories {
         maven {
             name = "artifactory"
-            url = uri("https://artifacthub-iad.oci.oraclecorp.com/artifactory/dst-maven-dev-local")
+            url = uri(project.findProperty("artifactoryUrl")?.toString() ?: System.getenv("ARTIFACTORY_URL") ?: error("Missing artifactoryUrl"))
 
             credentials {
-                username = project.findProperty("artifactoryUsername")?.toString() ?: System.getenv("ARTIFACTORY_USERNAME")
-                password = project.findProperty("artifactoryPassword")?.toString() ?: System.getenv("ARTIFACTORY_PASSWORD")
+                username = project.findProperty("artifactoryUsername")?.toString() ?: System.getenv("ARTIFACTORY_USERNAME") ?: error("Missing artifactoryUsername")
+                password = project.findProperty("artifactoryPassword")?.toString() ?: System.getenv("ARTIFACTORY_PASSWORD") ?: error("Missing artifactoryPassword")
             }
         }
     }

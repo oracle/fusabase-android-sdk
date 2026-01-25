@@ -368,7 +368,6 @@ class DataReader {
 
         for (String key : data.keySet()) {
             JsonValue value = data.get(key);
-            // Use type hints for better type preservation
             resultMap.put(key, DataReader.getJsonValueWithTypeHint(value, key));
         }
 
@@ -429,10 +428,6 @@ class DataReader {
             case ARRAY:
                 JsonArray jsonArray = (JsonArray) value;
                 List<Object> arrayList = jsonArray.getValuesAs(DataReader::getJsonValue);
-                // Check if this is a byte array (all elements are Longs between 0 and 255)
-                if (isByteArray(arrayList)) {
-                    return convertToByteArray(arrayList);
-                }
                 return arrayList; // Recursive for arrays
             case OBJECT:
                 return getJsonObjectDataInMap((JsonObject) value); // Recursive for nested objects

@@ -87,7 +87,6 @@
 //        assertEquals(c1.hashCode(), c2.hashCode());
 //    }
 //
-//    // ---------- Firebase Auth Integration ----------
 //
 //    @Test
 //    public void testSignInWithEmailAndPassword() throws Exception {
