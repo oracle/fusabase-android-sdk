@@ -254,12 +254,12 @@ public class SAMLAuthProvider extends FederatedAuthProvider{
      * Creates a new Builder instance for constructing SAMLAuthProvider objects.
      *
      * @param providerId The unique identifier for the authentication provider.
-     * @param firebaseAuth The OsbdtAuth instance (currently unused).
+     * @param osbdtAuth The OsbdtAuth instance (currently unused).
      * @return A new Builder instance.
      * @throws IllegalArgumentException If the providerId is null or empty.
      */
     public static @NonNull SAMLAuthProvider.Builder newBuilder(@NonNull String providerId,
-                                                            @NonNull OsbdtAuth firebaseAuth) throws IllegalArgumentException{
+                                                            @NonNull OsbdtAuth osbdtAuth) throws IllegalArgumentException{
         if (providerId.isEmpty())
         {
             throw new IllegalArgumentException("Empty providerId received. Kindly provide a valid providerId");

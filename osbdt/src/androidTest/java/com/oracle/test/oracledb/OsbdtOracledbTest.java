@@ -165,16 +165,7 @@ public class OsbdtOracledbTest {
 //        await(db.enableNetwork());
 //    }
 //
-//    @Test
-//    public void testFirestoreSettings() {
-//        OsbdtOradbSettings settings = new OsbdtOradbSettings.Builder()
-//                .setCacheSizeBytes(OsbdtOradbSettings.CACHE_SIZE_UNLIMITED)
-//                .build();
-//        db.setFirestoreSettings(settings);
-//
-//        OsbdtOradbSettings applied = db.getFirestoreSettings();
-//        assertEquals(OsbdtOradbSettings.CACHE_SIZE_UNLIMITED, applied.getCacheSizeBytes());
-//    }
+
 
     @Test
     public void testEqualityHashCodeAndToString() {

@@ -160,6 +160,12 @@ public class SocialLoginActivity extends AppCompatActivity {
                 codeVerifier);
 
         authHelper.saveDataToPreferences(authHelper
+                 .getOsbdtAuth()
+                 .getApp().getApplicationContext(),
+                 "osbdt_IS_LINK",
+                 String.valueOf(link));
+
+        authHelper.saveDataToPreferences(authHelper
                 .getOsbdtAuth()
                 .getApp()
                 .getApplicationContext(),

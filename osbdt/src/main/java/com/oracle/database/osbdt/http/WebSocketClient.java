@@ -28,9 +28,17 @@ package com.oracle.database.osbdt.http;
 
 import androidx.annotation.NonNull;
 
+import com.oracle.database.osbdt.OsbdtApp;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.concurrent.TimeUnit;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionSpec;
 import okhttp3.OkHttpClient;
@@ -63,11 +71,17 @@ public class WebSocketClient {
         ConnectionSpec spec = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
                 .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
                 .build();
-        this.client = new OkHttpClient.Builder()
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .pingInterval(7, TimeUnit.MINUTES)
                 .readTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
-                .connectionSpecs(Collections.singletonList(spec))
-                .build();
+                .connectionSpecs(Collections.singletonList(spec));
+
+        // Check global setting for self-signed certificates
+        if (OsbdtApp.allowsSelfSignedCertificates()) {
+            configureSelfSignedCertificates(builder);
+        }
+
+        this.client = builder.build();
         this.webSocketCallback = webSocketCallback;
         this.state = State.CLOSED;
     }
@@ -139,6 +153,56 @@ public class WebSocketClient {
     public void close() {
         if (webSocket != null) {
             webSocket.close(1000, "Client closed connection");
+        }
+    }
+
+    /**
+     * Configures the OkHttpClient to accept self-signed certificates.
+     * WARNING: This reduces security and should only be used for testing.
+     */
+    private void configureSelfSignedCertificates(OkHttpClient.Builder builder) {
+        try {
+            // Create a trust manager that does not validate certificate chains
+            final TrustManager[] trustAllCerts = new TrustManager[]{
+                    new X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                            // Accept all client certificates
+                        }
+
+                        @Override
+                        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                            // Accept all server certificates
+                        }
+
+                        @Override
+                        public X509Certificate[] getAcceptedIssuers() {
+                            return new X509Certificate[]{};
+                        }
+                    }
+            };
+
+            // Install the all-trusting trust manager
+            final SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+            // Create an all-trusting host name verifier
+            final HostnameVerifier allHostsValid = new HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            };
+
+            builder.sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
+                   .hostnameVerifier(allHostsValid);
+
+            OsbdtLogger.w(TAG, "WARNING: WebSocketClient configured to accept self-signed certificates. " +
+                    "This reduces security and should only be used for testing.");
+
+        } catch (Exception e) {
+            OsbdtLogger.e(TAG, "Failed to configure self-signed certificate support", e);
+            throw new RuntimeException("Failed to configure SSL for self-signed certificates", e);
         }
     }
 

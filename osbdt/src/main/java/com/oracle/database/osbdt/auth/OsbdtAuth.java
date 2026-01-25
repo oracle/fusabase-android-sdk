@@ -304,8 +304,8 @@ public class OsbdtAuth {
     }
 
     /**
-     * Gets the OsbdtAuth instance associated with the given OsbdtApp.
-     *
+     * Gets the OsbdtAuth instance associated with the given OsbdtApp. 
+     * This a built-in function designed to handle the "Forgot Password" workflow for your users.
      * @param app The OsbdtApp instance.
      * @return The OsbdtAuth instance.
      */
@@ -371,7 +371,7 @@ public class OsbdtAuth {
     }
 
     /**
-     * Sends a password reset email to the specified email address.
+     * Sends a password reset email to the specified email address. This
      *
      * @param email Email address to send the password reset email to.
      * @return Task representing the password reset operation.
@@ -384,6 +384,9 @@ public class OsbdtAuth {
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
                 this.authHelper.sendPasswordResetEmailHelper(email);
+                // Store the email for security validation throughout the reset flow
+                this.authHelper.saveDataToPreferences(this.app.getApplicationContext(),
+                    "password_reset_email", email);
             } catch (Exception e) {
                 OsbdtLogger.e(TAG, "Exception encountered while performing sendPasswordResetEmail operation");
                 Exception exception = e;
@@ -709,7 +712,7 @@ public class OsbdtAuth {
      */
      public @NonNull Task<Void> signOut() {
 
-        if(this.currentUser == null)
+        if(this.getCurrentUser() == null)
         {
             throw new IllegalStateException("No signed in user is present to logOut.");
         }
@@ -768,12 +771,23 @@ public class OsbdtAuth {
             JsonObject res = null;
             try {
                 res = this.authHelper.verifyPasswordResetCodeHelper(code);
-                taskCompletionSource.setResult(res.getString("username"));
+                String backendUsername = res.getString("username");
+
+                // Security validation: ensure the backend username matches the stored email
+                String storedEmail = this.authHelper.readDataFromPreferences(
+                    this.app.getApplicationContext(), "password_reset_email");
+                if (storedEmail == null || storedEmail.isEmpty()) {
+                    throw new OsbdtException("No password reset request found. Please request a password reset first.");
+                }
+                if (!storedEmail.equals(backendUsername)) {
+                    throw new OsbdtException("Password reset code is not valid for the requested email address.");
+                }
+
+                taskCompletionSource.setResult(backendUsername);
                 return "";
             } catch (OsbdtException e) {
                 throw new RuntimeException(e);
             }
-
         });
         taskCompletionSource.handleFuture(future);
         return task;
@@ -797,6 +811,13 @@ public class OsbdtAuth {
                 return "";
             } catch (OsbdtException e) {
                 throw new RuntimeException(e);
+            } finally {
+                // Always clear the stored email after the operation
+                try {
+                    this.authHelper.deleteDataFromPreferences(this.app.getApplicationContext(), "password_reset_email");
+                } catch (Exception clearException) {
+                    OsbdtLogger.w(TAG, "Failed to clear password reset email from preferences: " + clearException.getMessage());
+                }
             }
        });
         taskCompletionSource.handleFuture(future);

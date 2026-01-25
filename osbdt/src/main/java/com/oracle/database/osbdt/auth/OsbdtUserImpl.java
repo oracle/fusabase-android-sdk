@@ -158,12 +158,21 @@ class OsbdtUserImpl extends OsbdtUser {
         };
     }
 
-
     @NonNull
     protected String getRefreshToken() {
         try {
             JsonObject data = loadUserData();
             return data.containsKey("refreshToken") ? data.getString("refreshToken") : "";
+        } catch (OsbdtException e) {
+            return "";
+        }
+    }
+
+    @NonNull
+    protected String getAccessToken() {
+        try {
+            JsonObject data = loadUserData();
+            return data.containsKey("accessToken") ? data.getString("accessToken") : "";
         } catch (OsbdtException e) {
             return "";
         }
