@@ -71,6 +71,23 @@ import java.util.concurrent.Executors;
 //    b.@NonNull public Task<AuthResult> signInWithCredential(@NonNull AuthCredential credential)
 //    c.@NonNull public Task<AuthResult> startActivityForSignInWithProvider(@NonNull android.app.Activity activity, @NonNull FederatedAuthProvider authProvider)
 
+// Manual Steps to be run before perfoming the test
+// 1. Setup with an Auth Type (base, idcs, ldap)
+// 2. Setup with an Storage Type (dbfs, oci)
+// 3. Duality View Setup (Look for the commands at the end)
+// 4.
+
+
+
+
+// Manual Tests
+// 1. OsbdtAuth.java
+//    a.@Nullable public Task<AuthResult> getPendingAuthResult()
+//    b.@NonNull public Task<AuthResult> signInWithCredential(@NonNull AuthCredential credential) 
+//    c.@NonNull public Task<AuthResult> startActivityForSignInWithProvider(@NonNull android.app.Activity activity, @NonNull FederatedAuthProvider authProvider)
+
+
+
 @RunWith(AndroidJUnit4.class)
 public class regression {
 
@@ -14211,4 +14228,31 @@ public class regression {
             assertFalse("Document should be deleted: " + doc.getId(), deletedSnap.exists());
         }
     }
+    public void testJoinConnection_shouldReturnJoinResults() throws Exception {
+        for (String authType : AUTH_TYPES) {
+            OsbdtAuth auth = getAuthForType(authType);
+            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
+
+            String[] collections = {"TEST_1"};
+            addSecurityRule(collections);
+
+            String[] credentials = getNewUserCredentials();
+            String email = credentials[0];
+            String password = credentials[1];
+
+            await(auth.createUserWithEmailAndPassword(email, password));
+
+            QuerySnapshot qs = await(db
+                    .join("TEST_1")
+                    .get());
+
+            System.out.println("Docs count: " + qs.getDocuments().size());
+
+            assertNotNull(qs.toString());
+            assertTrue(qs.getDocuments().size() > 0);
+
+            deleteUser(email);
+        }
+    }
+   
 }
