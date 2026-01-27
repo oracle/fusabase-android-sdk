@@ -470,6 +470,7 @@ public abstract class StorageTask<ResultT extends StorageTask.ProvideError> exte
     protected  void setResumed() { this.isPaused = false;}
 
     protected void setResult(ResultT result) {
+        super.setResult(result);
         this.result = result;
     }
 

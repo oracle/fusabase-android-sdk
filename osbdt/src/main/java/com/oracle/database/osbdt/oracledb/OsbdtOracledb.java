@@ -29,6 +29,7 @@ package com.oracle.database.osbdt.oracledb;
 import androidx.annotation.NonNull;
 
 import com.oracle.database.osbdt.OsbdtApp;
+import com.oracle.database.osbdt.OsbdtException;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 import com.oracle.database.osbdt.task.Task;
 import com.oracle.database.osbdt.task.TaskCompletionSource;
@@ -119,7 +120,7 @@ public class OsbdtOracledb {
      */
     @NonNull
     public Query join(@NonNull String viewName) {
-        Query joinQuery = new Query(this, "", false);
+        Query joinQuery = new Query(this, "", false, false);
         return joinQuery.join(viewName);
     }
 
@@ -144,7 +145,7 @@ public class OsbdtOracledb {
      */
     @NonNull
     public Query collectionGroup(@NonNull String collectionId) {
-        return new Query(this, collectionId, false);
+        return new Query(this, collectionId, false, true);
     }
 
     /**
@@ -291,6 +292,11 @@ public class OsbdtOracledb {
                 if(!(exception instanceof OsbdtOracledbException))
                     exception = new OsbdtOracledbException(exception.getMessage() == null ?
                         "Internal Error Occurred" : exception.getMessage(), OsbdtOracledbException.Code.INTERNAL);
+                throw new CompletionException(exception);
+            } catch (Throwable th) {
+                Exception exception = new OsbdtException(th.getMessage() == null ?
+                        "Exception Occured while running transaction." :
+                        th.getMessage());
                 throw new CompletionException(exception);
             }
             taskCompletionSource.setResult(res);

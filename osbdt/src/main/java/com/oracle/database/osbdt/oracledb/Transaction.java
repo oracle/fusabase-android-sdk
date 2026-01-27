@@ -288,10 +288,6 @@ public class Transaction {
                     "get operation performed for this document reference");
         }
 
-        if (Objects.equals(this.versions.get(documentRef.getPath()), TransactionOperation.DOES_NOT_EXIST_VERSION))
-            throw new IllegalStateException("The document referred by path " +
-                    documentRef.getPath() + " doesn't exists.");
-
         operations.add(new WriteOperation(WriteOperation.OperationType.UPDATE,
                 documentRef,
                 data,

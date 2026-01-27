@@ -291,6 +291,8 @@ public abstract class OsbdtUser implements UserInfo {
                     ? data.getString("photoUrl") : this.photoUrl;
                 this.phoneNumber = data.containsKey("phoneNumber")
                     ? data.getString("phoneNumber") : this.phoneNumber;
+                // Update the current user in the auth instance to ensure getCurrentUser() returns updated data
+                this.auth.currentUser = this;
                 taskCompletionSource.setResult(null);
             } catch (OsbdtException e) {
                 // If reload fails, keep current values

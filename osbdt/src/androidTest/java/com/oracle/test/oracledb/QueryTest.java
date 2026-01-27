@@ -186,13 +186,13 @@ public class QueryTest {
         doc7.put("tags", Arrays.asList()); // empty array
         doc7.put("metadata", new HashMap<>()); // empty map
 
-//        await(testCollection.document("doc1").set(doc1));
-//        await(testCollection.document("doc2").set(doc2));
-//        await(testCollection.document("doc3").set(doc3));
-//        await(testCollection.document("doc4").set(doc4));
-//        await(testCollection.document("doc5").set(doc5));
-//        await(testCollection.document("doc6").set(doc6));
-//        await(testCollection.document("doc7").set(doc7));
+        await(testCollection.document("doc1").set(doc1));
+        await(testCollection.document("doc2").set(doc2));
+        await(testCollection.document("doc3").set(doc3));
+        await(testCollection.document("doc4").set(doc4));
+        await(testCollection.document("doc5").set(doc5));
+        await(testCollection.document("doc6").set(doc6));
+        await(testCollection.document("doc7").set(doc7));
     }
 
     private void addSecurityRules(String collection) throws Exception {
