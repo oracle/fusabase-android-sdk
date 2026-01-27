@@ -13733,6 +13733,36 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create test documents with various scores
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("score", 50.0);
+        }})); // null score
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("score", 78.3);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("score", 85.5);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("score", 88.9);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("score", 91.2);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("score", 92.0);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("score", 96.8);
+        }}));
+
         CountDownLatch latch = new CountDownLatch(1);
 
         // Test limitToLast with complex ordering
@@ -13760,7 +13790,7 @@ public class regression {
                 Double score2 = docs.get(1).getDouble("score");
                 if (score1 != null && score2 != null) {
                     assertTrue("Higher score should come first: " + score1 + " >= " + score2,
-                             score1 >= score2);
+                            score1 >= score2);
                 }
             }
 
@@ -13768,6 +13798,15 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
@@ -14228,31 +14267,4 @@ public class regression {
             assertFalse("Document should be deleted: " + doc.getId(), deletedSnap.exists());
         }
     }
-    public void testJoinConnection_shouldReturnJoinResults() throws Exception {
-        for (String authType : AUTH_TYPES) {
-            OsbdtAuth auth = getAuthForType(authType);
-            OsbdtOracledb db = OsbdtOracledb.getInstance(auth.getApp());
-
-            String[] collections = {"TEST_1"};
-            addSecurityRule(collections);
-
-            String[] credentials = getNewUserCredentials();
-            String email = credentials[0];
-            String password = credentials[1];
-
-            await(auth.createUserWithEmailAndPassword(email, password));
-
-            QuerySnapshot qs = await(db
-                    .join("TEST_1")
-                    .get());
-
-            System.out.println("Docs count: " + qs.getDocuments().size());
-
-            assertNotNull(qs.toString());
-            assertTrue(qs.getDocuments().size() > 0);
-
-            deleteUser(email);
-        }
-    }
-   
 }
