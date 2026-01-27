@@ -1,5 +1,3 @@
-*Detailed instructions on how to contribute to the project, if applicable. Must include section about Oracle Contributor Agreement with link and instructions*
-
 # Contributing to this repository
 
 We welcome your contributions! There are multiple ways to contribute.
@@ -23,8 +21,8 @@ address you used to sign the OCA:
 Signed-off-by: Your Name <you@example.org>
 ```
 
-This can be automatically added to pull requests by committing with `--sign-off`
-or `-s`, e.g.
+This can be automatically added to pull requests by committing with
+`--sign-off` or `-s`, e.g.
 
 ```text
 git commit --signoff
@@ -48,10 +46,13 @@ can be accepted.
    your changes. Ensure that you reference the issue you created as well.
 1. We will assign the pull request to 2-3 people for review before it is merged.
 
+Note we merge to an internal repo first before pushing back to GitHub.
+
 ## Code of conduct
 
 Follow the [Golden Rule](https://en.wikipedia.org/wiki/Golden_Rule). If you'd
-like more specific guidelines, see the [Contributor Covenant Code of Conduct][COC].
+like more specific guidelines, see the [Contributor Covenant Code of
+Conduct][COC].
 
 [OCA]: https://oca.opensource.oracle.com
 [COC]: https://www.contributor-covenant.org/version/1/4/code-of-conduct/
