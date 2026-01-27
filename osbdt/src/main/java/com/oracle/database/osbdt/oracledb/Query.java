@@ -86,6 +86,8 @@ public class Query extends Reference {
      */
     final List<Filter> conditions;
 
+    final boolean isColGroup;
+
     /**
      * Column names to select in the query.
      */
@@ -166,11 +168,12 @@ public class Query extends Reference {
     /**
      * Constructs a Query instance.
      *
-     * @param oracledb the Oracledb database instance
-     * @param path the path string for the query
+     * @param oracledb      the Oracledb database instance
+     * @param path          the path string for the query
      * @param isDualityView whether this is a duality view query
+     * @param isColGroup whether the query is for a collection group
      */
-    protected Query(@NonNull OsbdtOracledb oracledb, @NonNull String path, boolean isDualityView) {
+    protected Query(@NonNull OsbdtOracledb oracledb, @NonNull String path, boolean isDualityView, boolean isColGroup) {
         super(oracledb);
         this.oradb = oracledb;
         this.listenerManager = new ListenerManager<>(oradb, this);
@@ -185,6 +188,7 @@ public class Query extends Reference {
         this.rt = 0;
         this.querySnap = null;
         this.isDualityView = isDualityView;
+        this.isColGroup = isColGroup;
     }
 
     /**
@@ -194,7 +198,7 @@ public class Query extends Reference {
      */
     @NonNull
     protected Query deepCopy() {
-        Query newQuery = new Query(this.oradb, String.join("/", this.path), this.isDualityView);
+        Query newQuery = new Query(this.oradb, String.join("/", this.path), this.isDualityView, this.isColGroup);
 
         // Copy all mutable fields
         newQuery.explicitOrder.addAll(this.explicitOrder);
@@ -587,6 +591,8 @@ public class Query extends Reference {
                     payloadBuilder.add("oid", this.path.get(1));
                 }
             }
+        } else if (this.isColGroup) {
+                payloadBuilder.add("col_group", this.path.get(0));
         } else {
             if (this.path != null) {
                 payloadBuilder.add("path", Json.createArrayBuilder(this.path));

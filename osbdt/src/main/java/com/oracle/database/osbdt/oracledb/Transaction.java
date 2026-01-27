@@ -256,11 +256,6 @@ public class Transaction {
             throw new IllegalStateException("The document referred by path " +
                     documentRef.getPath() + " doesn't exists.");
 
-        if (options.isMerge() && !this.versions.containsKey(documentRef.getPath())) {
-            throw new IllegalStateException("Please perform a get operation on " +
-                    documentRef.getPath() + " before performing any write operation.");
-        }
-
         operations.add(new WriteOperation(WriteOperation.OperationType.SET,
                 documentRef,
                 data,
@@ -287,10 +282,6 @@ public class Transaction {
             throw new IllegalArgumentException("Transaction cannot be performed since there is no " +
                     "get operation performed for this document reference");
         }
-
-        if (Objects.equals(this.versions.get(documentRef.getPath()), TransactionOperation.DOES_NOT_EXIST_VERSION))
-            throw new IllegalStateException("The document referred by path " +
-                    documentRef.getPath() + " doesn't exists.");
 
         operations.add(new WriteOperation(WriteOperation.OperationType.UPDATE,
                 documentRef,

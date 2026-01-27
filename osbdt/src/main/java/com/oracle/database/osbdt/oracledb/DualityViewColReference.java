@@ -62,7 +62,7 @@ public class DualityViewColReference extends Query {
      * @throws IllegalArgumentException if the path contains parent segments (duality views are top-level)
      */
     protected DualityViewColReference(@NonNull String path, @NonNull OsbdtOracledb oradb) {
-        super(oradb, path, true);
+        super(oradb, path, true, false);
 
         this.type = CollectionType.DUALITY_VIEW_COLLECTION;
 
