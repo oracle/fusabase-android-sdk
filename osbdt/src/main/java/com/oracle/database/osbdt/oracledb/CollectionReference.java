@@ -64,7 +64,7 @@ public class CollectionReference extends Query {
     protected CollectionReference(@NonNull String path,
                                   @Nullable DocumentReference parent,
                                   @NonNull OsbdtOracledb oradb) {
-        super(oradb, path, false);
+        super(oradb, path, false, false);
 
         this.type = CollectionType.COLLECTION;
 

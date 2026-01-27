@@ -27,12 +27,14 @@
 package com.oracle.database.osbdt.oracledb;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.oracle.database.osbdt.task.Task;
 import com.oracle.database.osbdt.task.TaskCompletionSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -156,7 +158,7 @@ public class BulkUpdate {
      * @return a Task representing the asynchronous operation
      */
     @NonNull
-    protected Task<Void> update(@NonNull Map<String, Object> data) {
+    public Task<Void> update(@NonNull Map<String, Object> data) {
         Objects.requireNonNull(data, "Invalid data provided");
 
         TaskCompletionSource<Void> taskCompletionSource = new TaskCompletionSource<>();
@@ -164,12 +166,8 @@ public class BulkUpdate {
 
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
-
-                JsonObject params = Json.createObjectBuilder()
-                    .add("conditions", getConditions())
-                    .build();
                 TransactionOperation operation = new TransactionOperation();
-                this.queryHelper.updateDocs(this.path, data, null, operation, params);
+                this.queryHelper.updateDocs(this.path, data, null, operation, getConditions());
 
             } catch (Exception e) {
                 Exception exception = e;
@@ -187,6 +185,107 @@ public class BulkUpdate {
         return task;
     }
 
+    private static boolean isInvalidUpdateField(String field) {
+        if (field == null || field.trim().isEmpty()) {
+            return true; // Must be non-null and non-empty
+        }
+
+        // Cannot start or end with a dot
+        if (field.startsWith(".") || field.endsWith(".")) {
+            return true;
+        }
+
+        // Cannot contain consecutive dots
+        if (field.contains("..")) {
+            return true;
+        }
+
+        // Split into path segments and ensure none are empty
+        String[] segments = field.split("\\.");
+        for (String segment : segments) {
+            if (segment.trim().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Method to update some fields of a document without overwriting the
+     * entire document. This method takes in the data in form of keys and
+     * values
+     *
+     * @param field               {@code String} First field to update with it's name
+     * @param value               {@code Object} First value of the field
+     * @param moreFieldsAndValues {@code Object[]} More field value pair
+     * @return {@code Task<Void>}
+     */
+    public @NonNull Task<Void> update(@NonNull String field, @Nullable Object value,
+                                      Object... moreFieldsAndValues) {
+
+        Objects.requireNonNull(field, "Invalid field provided to update()");
+        Objects.requireNonNull(value, "Invalid value provided to update()");
+
+        Map<String, Object> data = new HashMap<>();
+        data.put(field, value);
+
+        if (moreFieldsAndValues.length % 2 != 0) {
+            throw new IllegalArgumentException("Uneven number of field-value pairs.");
+        }
+
+        if(isInvalidUpdateField(field)) {
+            throw new IllegalArgumentException("Invalid field name provided.");
+        }
+
+        for (int i = 0; i < moreFieldsAndValues.length; i += 2) {
+            if (!(moreFieldsAndValues[i] instanceof String)) {
+                throw new IllegalArgumentException("Field names must be strings.");
+            }
+            String key = (String) moreFieldsAndValues[i];
+            Object val = moreFieldsAndValues[i + 1];
+            data.put(key, val);
+        }
+        return update(data);
+    }
+
+    /**
+     * Method to update some fields of a document without overwriting the
+     * entire document. This method takes in the data in form of keys and
+     * values
+     *
+     * @param fieldPath           {@code String} First field to update with it's name
+     * @param value               {@code Object} First value of the field
+     * @param moreFieldsAndValues {@code Object[]} More field value pair
+     * @return {@code Task<Void>}
+     */
+    @NonNull
+    public Task<Void> update(@NonNull FieldPath fieldPath, @Nullable Object value,
+                             Object... moreFieldsAndValues) {
+
+        if(isInvalidUpdateField(fieldPath.toString())) {
+            throw new IllegalArgumentException("Invalid field name provided.");
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put(fieldPath.toString(), value);
+
+        if (moreFieldsAndValues.length % 2 != 0) {
+            throw new IllegalArgumentException("Uneven number of field-value pairs.");
+        }
+
+        for (int i = 0; i < moreFieldsAndValues.length; i += 2) {
+            if (!(moreFieldsAndValues[i] instanceof FieldPath)) {
+                throw new IllegalArgumentException("Field must be of type FieldPath.");
+            }
+            FieldPath fieldPathKey = (FieldPath) moreFieldsAndValues[i];
+            if (isInvalidUpdateField(fieldPathKey.toString())) {
+                throw new IllegalArgumentException("Invalid field name provided.");
+            }
+            Object val = moreFieldsAndValues[i + 1];
+            data.put(fieldPathKey.toString(), val);
+        }
+        return update(data);
+    }
     /**
      * Builds the condition parameters for the bulk update request.
      */

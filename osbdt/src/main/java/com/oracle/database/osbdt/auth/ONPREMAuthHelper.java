@@ -358,8 +358,8 @@ class ONPREMAuthHelper extends AuthHelper {
                 JsonObject result = reader.readObject();
                 reader.close();
                 return Json.createObjectBuilder()
-                        .add("access_token", result.getString("access_token"))
-                        .add("refresh_token", result.getString("refresh_token"))
+                        .add("access_token", auth.getCurrentUser().getAccessToken())
+                        .add("refresh_token",  auth.getCurrentUser().getRefreshToken())
                         .build();
             }
             OsbdtLogger.e(TAG, "Cannot unlink user with providerId "

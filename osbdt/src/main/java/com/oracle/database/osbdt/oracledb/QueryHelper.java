@@ -369,7 +369,9 @@ class QueryHelper {
             @NonNull FieldValue fieldValue) {
         Object originalValue = fieldMap.get(fieldName);
 
-        if (originalValue instanceof Number) {
+        if (originalValue == null) {
+            fieldMap.put(fieldName, (long) fieldValue.getValues()[0]);
+        } else if (originalValue instanceof Number) {
             fieldMap.put(fieldName, ((Number) originalValue).doubleValue() + (long) fieldValue.getValues()[0]);
         } else {
             OsbdtLogger.e("QueryHelper", "Expected a number but existing value is non-numerical. Cannot increment.");
@@ -964,7 +966,10 @@ class QueryHelper {
                 payloadBuilder.add("oid", path.get(1));
             }
         } else {
-            payloadBuilder.add("path", Json.createArrayBuilder(path).build());
+            if(params != null)
+                payloadBuilder.add("path", Json.createArrayBuilder(path).add("*").build());
+            else
+                payloadBuilder.add("path", Json.createArrayBuilder(path).build());
         }
 
         if (preparedBody instanceof JsonObject)

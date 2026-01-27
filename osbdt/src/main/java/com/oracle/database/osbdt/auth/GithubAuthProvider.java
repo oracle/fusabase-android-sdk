@@ -83,6 +83,8 @@ public class GithubAuthProvider extends AuthProvider  {
 
     @NonNull
     public static AuthCredential getCredential(@NonNull String token) {
+        if(token == null)
+            throw new IllegalArgumentException("Invalid token provided.");
         return new GithubAuthCredential(PROVIDER_ID, GITHUB_SIGN_IN_METHOD, token);
     }
 }

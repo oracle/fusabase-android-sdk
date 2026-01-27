@@ -53,8 +53,18 @@ public class Tasks<T> {
      * @throws InterruptedException If the current thread is interrupted while waiting.
      */
     public static <T> T await(@NonNull Task<T> task) throws ExecutionException, InterruptedException {
-        ((TaskTracker<T>) task).get();
-        return task.getResult();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        task.addOnCompleteListener(completedTask -> latch.countDown());
+
+        latch.await();
+
+        if (task.isSuccessful()) {
+            return task.getResult();
+        } else {
+            Exception e = task.getException();
+            throw new ExecutionException(e);
+        }
     }
 
     /**

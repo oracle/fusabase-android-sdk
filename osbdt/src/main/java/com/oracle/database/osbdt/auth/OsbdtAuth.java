@@ -548,47 +548,12 @@ public class OsbdtAuth {
                         .add("accessToken", res.getString("access_token"))
                         .add("refreshToken", res.getString("refresh_token"))
                         .build();
-                String remainingProvider = userDetails.getString("idpName");
-                AuthResult result = new AuthResult() {
-                    @Nullable
-                    @Override
-                    public AuthCredential getCredential() {
-                        switch (remainingProvider) {
+                String remainingProvider = userDetails.containsKey("idpName") ?
+                        userDetails.getString("idpName") :
+                        userDetails.getString("idp_name");
+                remainingProvider = remainingProvider.equals("UserNamePassword") ? "epw" : remainingProvider;
 
-                            case "google.com":
-                                return new GoogleAuthCredential(
-                                        remainingProvider,
-                                        remainingProvider,
-                                        res.getString("accessToken")
-                                );
-
-                            case "github.com":
-                                return new GithubAuthCredential(
-                                        remainingProvider,
-                                        remainingProvider,
-                                        res.getString("accessToken")
-                                );
-
-                            case "facebook.com":
-                                return new FacebookAuthCredential(
-                                        remainingProvider,
-                                        remainingProvider,
-                                        res.getString("accessToken")
-                                );
-
-                            default:
-                                return null;
-                        }
-                    }
-
-                    @Nullable
-                    @Override
-                    public OsbdtUser getUser() {
-                        return new OsbdtUserImpl(userData,
-                            authHelper.getOsbdtAuth(),
-                            "");
-                    }
-                };
+                AuthResult result = getAuthResult(remainingProvider, res, userData);
 
                 OsbdtLogger.d("SocialAuth", "Stored user data from signInWithCredential");
 
@@ -611,6 +576,59 @@ public class OsbdtAuth {
         });
         taskCompletionSource.handleFuture(future);
         return task;
+    }
+
+    @NonNull
+    private AuthResult getAuthResult(String remainingProvider, JsonObject res, JsonObject userData) {
+        String finalRemainingProvider = remainingProvider;
+        AuthResult result = new AuthResult() {
+            @Nullable
+            @Override
+            public AuthCredential getCredential() {
+                switch (finalRemainingProvider) {
+
+                    case GoogleAuthProvider.PROVIDER_ID:
+                        return new GoogleAuthCredential(
+                                remainingProvider,
+                                remainingProvider,
+                                res.getString("accessToken")
+                        );
+
+                    case GithubAuthProvider.PROVIDER_ID:
+                        return new GithubAuthCredential(
+                                remainingProvider,
+                                remainingProvider,
+                                res.getString("accessToken")
+                        );
+
+                    case FacebookAuthProvider.PROVIDER_ID:
+                        return new FacebookAuthCredential(
+                                remainingProvider,
+                                remainingProvider,
+                                res.getString("accessToken")
+                        );
+
+                    case EmailAuthProvider.PROVIDER_ID:
+                        return new EmailAuthCredential(
+                                remainingProvider,
+                                remainingProvider,
+                                userData.getString("userEmail"),
+                                null
+                        );
+                    default:
+                        return null;
+                }
+            }
+
+            @Nullable
+            @Override
+            public OsbdtUser getUser() {
+                return new OsbdtUserImpl(userData,
+                    authHelper.getOsbdtAuth(),
+                    "");
+            }
+        };
+        return result;
     }
 
     /**
