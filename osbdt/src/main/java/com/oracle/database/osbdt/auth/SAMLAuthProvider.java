@@ -143,8 +143,7 @@ public class SAMLAuthProvider extends FederatedAuthProvider{
          * @return This builder instance for method chaining.
          */
         public @NonNull SAMLAuthProvider.Builder addCustomParameter(@NonNull String paramKey, @NonNull String paramValue) {
-            this.customParameters.put(paramKey, paramValue);
-            return this;
+            throw new UnsupportedOperationException("Custom Parameters are not supported");
         }
 
         /**
@@ -154,8 +153,7 @@ public class SAMLAuthProvider extends FederatedAuthProvider{
          * @return This builder instance for method chaining.
          */
         public @NonNull SAMLAuthProvider.Builder addCustomParameters(@NonNull Map<String, String> customParameters) {
-            this.customParameters = customParameters;
-            return this;
+            throw new UnsupportedOperationException("Custom Parameters are not supported");
         }
 
         /**
@@ -174,8 +172,7 @@ public class SAMLAuthProvider extends FederatedAuthProvider{
          * @return This builder instance for method chaining.
          */
         public @NonNull SAMLAuthProvider.Builder setScopes(@NonNull List<String> scopes) {
-            this.scopes = scopes;
-            return this;
+            throw new UnsupportedOperationException("Custom Scopes are not supported");
         }
     }
 

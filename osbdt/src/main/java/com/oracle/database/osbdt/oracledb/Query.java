@@ -592,6 +592,7 @@ public class Query extends Reference {
                 }
             }
         } else if (this.isColGroup) {
+                payloadBuilder.add("path", Json.createArrayBuilder().build());
                 payloadBuilder.add("col_group", this.path.get(0));
         } else {
             if (this.path != null) {
@@ -629,7 +630,6 @@ public class Query extends Reference {
                     .forEach(aggregateBuilder::add);
         }
         payloadBuilder.add("aggregate", aggregateBuilder.build())
-                .add("col_group", "")
                 .add("options", Json.createObjectBuilder().build());
 
         if(snapshot)

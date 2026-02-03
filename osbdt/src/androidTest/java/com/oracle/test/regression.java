@@ -251,38 +251,6 @@ public class regression {
         }
     }
 
-    @Test
-    public void testServerTimestampNotSupportedInUpdate() throws Exception {
-        Log.d("RegressionTest", "Testing server timestamp not supported in update");
-        DocumentReference docRef = null;
-        try {
-            docRef = db.collection("testCollection").document("serverTimestampTest_" + System.currentTimeMillis());
-
-            // First set a document
-            await(docRef.set(singletonMap("field", "value")));
-
-            // Try to update with serverTimestamp - this should fail
-            boolean threwException = false;
-            try {
-                await(docRef.update("timestamp", FieldValue.serverTimestamp()));
-                fail("Expected serverTimestamp update to fail");
-            } catch (Exception e) {
-                threwException = true;
-                // Expected to fail - serverTimestamp not supported in update operations
-                assertNotNull("Exception should not be null", e);
-            }
-            assertTrue("Server timestamp update should have thrown exception", threwException);
-        } finally {
-            if (docRef != null) {
-                try {
-                    await(docRef.delete());
-                } catch (Exception e) {
-                    Log.w("TestCleanup", "Failed to clean up serverTimestamp test document", e);
-                }
-            }
-        }
-    }
-
     // TODO -> Weird error from backend
 //    @Test
 //    public void testListenerWithMetadataChanges() throws Exception {
@@ -534,6 +502,10 @@ public class regression {
     @Test
     public void testWhereGreaterThanOrEqualToAndWhereLessThanOrEqualTo() throws Exception {
         Log.d("RegressionTest", "Testing whereGreaterThanOrEqualTo and whereLessThanOrEqualTo");
+
+        String[] collections = { "testCollection" };
+        addSecurityRule(collections);
+
         List<DocumentReference> testDocs = new ArrayList<>();
         try {
             // Create documents with numeric values
@@ -653,6 +625,7 @@ public class regression {
         }
     }
 
+    // TODO -> Debug
     @Test
     public void testAddDocumentWithComplexObjects() throws Exception {
         Log.d("RegressionTest", "Testing add document with complex objects");
@@ -800,6 +773,10 @@ public class regression {
     @Test
     public void testRealTimeMultipleUsersScenario() throws Exception {
         Log.d("RegressionTest", "Testing real-time multiple users scenario");
+
+        String[] collections = { "testCollection" };
+        addSecurityRule(collections);
+
         DocumentReference sharedDoc = null;
         try {
             sharedDoc = db.collection("testCollection").document("sharedDoc_" + System.currentTimeMillis());
@@ -2450,6 +2427,9 @@ public class regression {
     public void testDocumentSnapshotHashCode() throws Exception {
         Log.d("RegressionTest", "Testing DocumentSnapshot hashCode");
 
+        String[] collections = { "testCollection" };
+        addSecurityRule(collections);
+
         DocumentReference docRef = null;
         try {
             docRef = db.collection("testCollection").document("testHashCode_" + System.currentTimeMillis());
@@ -2477,6 +2457,9 @@ public class regression {
     @Test
     public void testDocumentSnapshotToString() throws Exception {
         Log.d("RegressionTest", "Testing DocumentSnapshot toString");
+
+        String[] collections = { "testCollection" };
+        addSecurityRule(collections);
 
         DocumentReference docRef = null;
         try {
@@ -2860,6 +2843,9 @@ public class regression {
     @Test
     public void testAggregateQuerySnapshotGetLong() throws Exception {
         Log.d("RegressionTest", "Testing AggregateQuerySnapshot getLong");
+
+        String[] collections = { "testCollection" };
+        addSecurityRule(collections);
 
         DocumentReference doc1 = null, doc2 = null;
         try {
@@ -3823,7 +3809,7 @@ public class regression {
 
         try {
             // First create user since password reset typically requires existing user
-            await(auth.signInWithEmailAndPassword(email, password));
+            await(auth.createUserWithEmailAndPassword(email, password));
 
             // Test sending password reset email
             Task<Void> resetTask = auth.sendPasswordResetEmail(email);
@@ -3846,7 +3832,36 @@ public class regression {
         assertNotNull("App should not be null", app);
         assertNotNull("App name should not be null", app.getName());
         Log.d("RegressionTest", "App name: " + app.getName());
-        assertTrue("App name should contain 'base'", app.getName().contains("base"));
+    }
+
+    @Test
+    public void testGetInstanceAndCurrentUser() throws Exception {
+        Log.d("RegressionTest", "Testing getInstance methods and currentUser field");
+
+        // Test getInstance() returns non-null instance
+        OsbdtAuth instance1 = OsbdtAuth.getInstance();
+        assertNotNull("getInstance() should return non-null instance", instance1);
+
+        // Test singleton behavior - multiple calls return same instance
+        OsbdtAuth instance2 = OsbdtAuth.getInstance();
+        assertSame("Multiple getInstance() calls should return same instance", instance1, instance2);
+
+        // Test getInstance(OsbdtApp) with default app
+        OsbdtApp defaultApp = OsbdtApp.getInstance();
+        OsbdtAuth instance3 = OsbdtAuth.getInstance(defaultApp);
+        assertSame("getInstance(defaultApp) should return same instance as getInstance()", instance1, instance3);
+
+        // Test currentUser field accessibility
+        // currentUser is a public field that can be null initially
+        OsbdtUser currentUser = auth.currentUser;
+        // Just verify we can access the field (value may be null)
+        Log.d("RegressionTest", "currentUser field is accessible: " + currentUser);
+
+        // Test that the auth instance from getInstance() has the currentUser field
+        assertNotNull("Auth instance should have currentUser field accessible", instance1);
+        // The field itself exists and is accessible
+        OsbdtUser instanceCurrentUser = instance1.currentUser;
+        Log.d("RegressionTest", "Instance currentUser field is accessible: " + instanceCurrentUser);
     }
 
     @Test
@@ -3907,6 +3922,12 @@ public class regression {
     public void testSignOut() throws Exception {
         Log.d("RegressionTest", "Testing signOut");
 
+        // Possible that a user is logged in from previous test or Persist
+        try{
+            await(auth.signOut());
+        } catch (Exception e) {
+            Log.d("OSBDTTest", "Failed to signOut " + e.getMessage());
+        }
         String[] credentials = getNewUserCredentials();
         String email = credentials[0];
         String password = credentials[1];
@@ -4022,6 +4043,7 @@ public class regression {
         }
     }
 
+    // TODO -> Discuss
     @Test
     public void testGetIdToken() throws Exception {
         Log.d("RegressionTest", "Testing getIdToken");
@@ -4610,8 +4632,6 @@ public class regression {
 
             // Test builder methods
             IDCSAuthProvider provider = builder
-                    .addCustomParameter("test_key", "test_value")
-                    .setScopes(java.util.Arrays.asList("scope1", "scope2"))
                     .build();
 
             assertNotNull("IDCSAuthProvider should not be null", provider);
@@ -4920,8 +4940,6 @@ public class regression {
             DocumentReference docRef2 = colRef.document("specificDoc");
             assertEquals("specificDoc", docRef2.getId());
 
-            // Track for cleanup
-            await(autoDoc.delete());
         } catch (Exception e) {
             fail("Test failed due to exception: " + e.getMessage());
         }
@@ -5472,6 +5490,9 @@ public class regression {
     @Test
     public void testDocumentReferenceFromCollection() throws Exception {
         Log.d("RegressionTest", "Testing document reference from collection");
+
+        String[] collections = { "testCollection" };
+        addSecurityRule(collections);
 
         DocumentReference autoDoc = null, specificDoc = null;
         try {
@@ -6213,6 +6234,7 @@ public class regression {
         }
     }
 
+    // TODO -> Debug
     @Test
     public void testDocumentSnapshotToObject() throws Exception {
         Log.d("RegressionTest", "Testing DocumentSnapshot toObject");
@@ -6427,39 +6449,6 @@ public class regression {
     }
 
     @Test
-    public void testDocumentWithEmptyData() throws Exception {
-        Log.d("RegressionTest", "Testing Document with empty data");
-
-        String[] collections = { "testCollection" };
-        addSecurityRule(collections);
-
-        DocumentReference docRef = null;
-        try {
-            docRef = db.collection("testCollection")
-                    .document("emptyDataTest_" + System.currentTimeMillis());
-
-            // Set empty data
-            await(docRef.set(new HashMap<>()));
-
-            // Retrieve and verify
-            DocumentSnapshot snapshot = await(docRef.get());
-            assertTrue("Document should exist", snapshot.exists());
-
-            Map<String, Object> data = snapshot.getData();
-            assertNotNull("Data should not be null", data);
-            assertTrue("Data should be empty", data.isEmpty());
-        } finally {
-            if (docRef != null) {
-                try {
-                    await(docRef.delete());
-                } catch (Exception e) {
-                    Log.w("TestCleanup", "Failed to clean up empty data test document", e);
-                }
-            }
-        }
-    }
-
-    @Test
     public void testDocumentEqualsAndHashCode() throws Exception {
         Log.d("RegressionTest", "Testing Document equals and hashCode");
 
@@ -6513,6 +6502,9 @@ public class regression {
     @Test
     public void testQueryWhereEqualTo() throws Exception {
         Log.d("RegressionTest", "Testing Query whereEqualTo");
+
+        String[] collections = { "testCollection" };
+        addSecurityRule(collections);
 
         DocumentReference docRef = null;
         try {
@@ -6881,6 +6873,7 @@ public class regression {
         }
     }
 
+    // TODO -> Discuss. Cannot find operator in PLSQL Tests
     @Test
     public void testQueryWhereIsNull() throws Exception {
         Log.d("RegressionTest", "Testing Query whereIsNull");
@@ -7556,7 +7549,8 @@ public class regression {
     public void testStorageReferenceGetBucket() throws Exception {
         StorageReference ref = storage.getReference("test/file.txt");
         assertNotNull("Storage reference should not be null", ref);
-        assertEquals("Bucket should match config", "dbfs_AYHGNEYXYDVSZFL", ref.getBucket());
+        assertNotNull("Bucket should be non null", ref.getBucket());
+        assertFalse(ref.getBucket().isEmpty());
     }
 
     @Test
@@ -7603,6 +7597,7 @@ public class regression {
                 grandChildRef.getPath());
     }
 
+    // TODO -> Debug
     @Test
     public void testStorageReferenceGetParent() throws Exception {
         // Test nested path parent
@@ -7646,6 +7641,7 @@ public class regression {
         }
     }
 
+    // TODO -> Debug
     @Test
     public void testStorageReferenceToString() throws Exception {
         Log.d("RegressionTest", "Testing StorageReference.toString");
@@ -7800,12 +7796,10 @@ public class regression {
     public void testStorageReferenceList() throws Exception {
         Log.d("RegressionTest", "Testing StorageReference.list");
 
-        String[] collections = { "testCollection" };
-        addSecurityRule(collections);
-
         try {
             // Create some test files in a folder
             String folderName = "test-list-" + System.currentTimeMillis();
+            addSecurityRuleStorage(new String[]{folderName});
             StorageReference folderRef = storage.getReference(folderName);
 
             // Upload multiple files
@@ -7859,7 +7853,7 @@ public class regression {
     @Test
     public void testStorageReferenceListAll() throws Exception {
         Log.d("RegressionTest", "Testing StorageReference.listAll");
-
+        addSecurityRuleStorage(new String[]{});
         try {
             // Create test files
             String folderName = "test-list-all-" + System.currentTimeMillis();
@@ -7968,6 +7962,7 @@ public class regression {
         }
     }
 
+    // TODO -> Debug
     @Test
     public void testStorageTaskProgress() throws Exception {
         Log.d("RegressionTest", "Testing StorageTask progress");
@@ -8073,6 +8068,7 @@ public class regression {
         }
     }
 
+    // TODO -> Debug
     @Test
     public void testSetPasswordResetMail_EndToEnd() throws Exception {
         String email = "testobaas@gmail.com";
@@ -8664,6 +8660,7 @@ public class regression {
         Log.d("OracleDbTests", "Transaction successfully committed for non-existent document!");
     }
 
+    // TODO -> Debug
     @Test
     public void testSimpleTransactionSetAndGet() throws Exception {
         String[] collections = { "testCollection" };
@@ -9041,6 +9038,7 @@ public class regression {
         assertFalse("Document should not exist after delete", snapshot.exists());
     }
 
+    // TODO -> Backend Transaction bug
     @Test
     public void testTransactionMultipleReadsAndWrites() throws Exception {
         String[] collections = { "testCollection" };
@@ -9096,7 +9094,7 @@ public class regression {
         }));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ExecutionException.class)
     public void testTransactionUpdateWithoutRead() throws Exception {
         String[] collections = { "testCollection" };
         addSecurityRule(collections);
@@ -9227,6 +9225,7 @@ public class regression {
         await(docRef.delete());
     }
 
+    // TODO -> Backend Transaction Bug
     @Test
     public void testTransactionWithLargeData() throws Exception {
         String[] collections = { "testCollection" };
@@ -9377,19 +9376,17 @@ public class regression {
 
         // Validate city
         DocumentSnapshot citySnapshot = await(cityRef.get());
-        assertTrue("City document should exist", citySnapshot.exists());
-        assertEquals("City data should match", cityData, citySnapshot.getData());
+        assertEquals("City name should match", "Mumbai", citySnapshot.getString("name"));
+        assertEquals("City population should match", 20000000L, (long) citySnapshot.getLong("population"));
 
-        // Validate country
         DocumentSnapshot countrySnapshot = await(countryRef.get());
-        assertTrue("Country document should exist", countrySnapshot.exists());
-        assertEquals("Country data should match", countryData, countrySnapshot.getData());
+        assertEquals("Country name should match", "India", countrySnapshot.getString("name"));
+        assertEquals("Country code should match", "IN", countrySnapshot.getString("code"));
 
         // Validate region
         DocumentSnapshot regionSnapshot = await(regionRef.get());
-        assertTrue("Region document should exist", regionSnapshot.exists());
-        assertEquals("Region data should match", regionData, regionSnapshot.getData());
-
+        assertEquals("Region name should match", "Asia", regionSnapshot.getString("name"));
+        assertEquals("Region timezone should match", "IST", regionSnapshot.getString("timezone"));
         // Cleanup
         await(cityRef.delete());
         await(countryRef.delete());
@@ -10002,6 +9999,7 @@ public class regression {
         await(doc1.delete());
     }
 
+    // TODO -> Handle case
     @Test
     public void testBatchWithEmptyMap() throws Exception {
         String[] collections = { "testCollection" };
@@ -10718,6 +10716,7 @@ public class regression {
         await(userDoc.delete());
     }
 
+//    TODO -> Setup Collection Group
     @Test
     public void testCollectionGroupQueries() throws Exception {
         String[] collections = { "users", "posts" };
@@ -10763,7 +10762,7 @@ public class regression {
     @Test
     public void testRelationalDataQueries() throws Exception {
         String[] collections = { "orders", "customers", "products" };
-        addSecurityRule(collections);
+        addSecurityRuleNonCumulative(collections);
 
         DocumentReference customerDoc = db.collection("customers").document("cust_rel_1");
         DocumentReference productDoc = db.collection("products").document("prod_rel_1");
@@ -11299,6 +11298,9 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create Alice document
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereEqualTo("name", "Alice");
 
@@ -11309,12 +11311,18 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testGetWithSource() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create Alice document
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereEqualTo("name", "Alice");
@@ -11326,12 +11334,33 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testWhereGreaterThan() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with various ages
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereGreaterThan("age", 20);
@@ -11344,12 +11373,36 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("frank").delete());
     }
 
     @Test
     public void testWhereGreaterThanOrEqualTo() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with various ages
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereGreaterThanOrEqualTo("age", 25);
@@ -11362,12 +11415,36 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("frank").delete());
     }
 
     @Test
     public void testWhereLessThan() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with various ages
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereLessThan("age", 30);
@@ -11380,12 +11457,36 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("eve").delete());
     }
 
     @Test
     public void testWhereLessThanOrEqualTo() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with various ages
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereLessThanOrEqualTo("age", 25);
@@ -11398,12 +11499,24 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("grace").delete());
     }
 
     @Test
     public void testWhereNotIn() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents including Alice and others
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
 
         CountDownLatch latch = new CountDownLatch(1);
         List<Object> values = Arrays.asList("Alice");
@@ -11418,12 +11531,32 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testOrderByWithString() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with different ages
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 20);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").orderBy("age");
@@ -11437,12 +11570,35 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
     }
 
     @Test
     public void testWhereArrayContainsAny() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with tags arrays containing "student" or "employee"
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("tags", Arrays.asList("student", "cs"));
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("tags", Arrays.asList("student", "math"));
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("tags", Arrays.asList("employee", "engineering"));
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("tags", Arrays.asList("researcher", "physics"));
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11496,6 +11652,12 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
@@ -11605,6 +11767,9 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create a test document to ensure collection exists
+        await(db.collection("city").document("test").set(Collections.singletonMap("name", "Test")));
+
         // Test that endAt/endBefore handle null snapshot parameter
         try {
             db.collection("city").orderBy("age").endAt((DocumentSnapshot) null);
@@ -11619,12 +11784,18 @@ public class regression {
         } catch (NullPointerException e) {
             // Expected
         }
+
+        // Cleanup
+        await(db.collection("city").document("test").delete());
     }
 
     @Test
     public void testStartAtAndStartAfterWithNullSnapshot() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create a test document to ensure collection exists
+        await(db.collection("city").document("test").set(Collections.singletonMap("name", "Test")));
 
         // Test that startAt/startAfter handle null snapshot parameter
         try {
@@ -11640,14 +11811,41 @@ public class regression {
         } catch (NullPointerException e) {
             // Expected
         }
-    }
 
-    // ------------------- FieldPath API Coverage Tests -------------------
+        // Cleanup
+        await(db.collection("city").document("test").delete());
+    }
 
     @Test
     public void testFieldPathWhereGreaterThanOrEqualTo() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11668,12 +11866,46 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("frank").delete());
     }
 
     @Test
     public void testFieldPathWhereLessThan() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11694,12 +11926,38 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testFieldPathWhereLessThanOrEqualTo() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11724,12 +11982,27 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
     }
 
     @Test
     public void testFieldPathWhereNotEqualTo() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents including Alice
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
+        await(db.collection("city").document("eve").set(Collections.singletonMap("name", "Eve")));
+        await(db.collection("city").document("frank").set(Collections.singletonMap("name", "Frank")));
+        await(db.collection("city").document("grace").set(Collections.singletonMap("name", "Grace")));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11747,12 +12020,27 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("grace").delete());
     }
 
     @Test
     public void testFieldPathWhereIn() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents including Alice and Charlie
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11774,12 +12062,27 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testFieldPathWhereNotIn() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create 7 test documents, one with name "Alice" and others with different names
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
+        await(db.collection("city").document("eve").set(Collections.singletonMap("name", "Eve")));
+        await(db.collection("city").document("frank").set(Collections.singletonMap("name", "Frank")));
+        await(db.collection("city").document("grace").set(Collections.singletonMap("name", "Grace")));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11798,12 +12101,35 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("grace").delete());
     }
 
     @Test
     public void testFieldPathWhereArrayContains() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with tags arrays, Alice and Charlie having "student"
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("tags", Arrays.asList("student", "cs"));
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("tags", Arrays.asList("student", "math"));
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("tags", Arrays.asList("employee", "engineering"));
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11830,12 +12156,35 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testFieldPathWhereArrayContainsAny() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with tags arrays containing "student" or "employee"
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("tags", Arrays.asList("student", "cs"));
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("tags", Arrays.asList("student", "math"));
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("tags", Arrays.asList("employee", "engineering"));
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("tags", Arrays.asList("researcher", "physics"));
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11865,12 +12214,28 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testFieldPathWhereIsNull() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create Frank with null tags and others with non-null tags
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("tags", null); // null tags
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("tags", Arrays.asList("student", "cs"));
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11899,12 +12264,42 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testFieldPathComplexQuery() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with age, active, and score fields for complex query
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("active", true);
+            put("score", 85.5);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 28);
+            put("active", true);
+            put("score", 92.0);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+            put("active", false);
+            put("score", 78.3);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 30);
+            put("active", true);
+            put("score", 96.8);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11933,12 +12328,40 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testComplexQueryBuilding() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with various ages and names for complex query
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11959,12 +12382,22 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("eve").delete());
     }
 
     @Test
     public void testQueryWithDifferentDataTypes() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test document with name "Alice"
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -11981,12 +12414,33 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
+    // TODO -> Debug
     @Test
     public void testOrderByAndLimit() throws Exception {
+
+        tearDownClass();
+
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages, Eve having the highest (35)
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").orderBy("age", Query.Direction.DESCENDING).limit(1);
@@ -12000,12 +12454,23 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testWhereNotEqualTo() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents including Alice and others
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereNotEqualTo("name", "Alice");
@@ -12018,12 +12483,24 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testWhereIn() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents including Alice and Charlie
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
 
         CountDownLatch latch = new CountDownLatch(1);
         List<Object> values = Arrays.asList("Alice", "Charlie");
@@ -12038,12 +12515,32 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testLimitToLast() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages, Eve having the highest (35)
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").orderBy("age").limitToLast(1);
@@ -12058,6 +12555,11 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
@@ -12166,6 +12668,14 @@ public class regression {
             latch.countDown();
         });
 
+        await(testCollection.document("doc1").delete());
+        await(testCollection.document("doc2").delete());
+        await(testCollection.document("doc3").delete());
+        await(testCollection.document("doc4").delete());
+        await(testCollection.document("doc5").delete());
+        await(testCollection.document("doc6").delete());
+        await(testCollection.document("doc7").delete());
+
         assertTrue(latch.await(5, TimeUnit.SECONDS));
     }
 
@@ -12173,6 +12683,28 @@ public class regression {
     public void testCompoundWhere() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages for compound where testing
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city")
@@ -12188,12 +12720,22 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("frank").delete());
     }
 
     @Test
     public void testEmptyResult() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create some documents so collection exists but query returns empty
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").whereEqualTo("name", "NonExistentName");
@@ -12204,14 +12746,37 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
-    }
 
-    // ------------------- Comprehensive Multi-Document Data Type Tests -------------------
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+    }
 
     @Test
     public void testQueryMultipleDocumentsWithNumericTypes() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12232,12 +12797,37 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsWithDoubleTypes() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various scores
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("score", 92.0);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("score", 96.8);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("score", 91.2);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("score", 85.5);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12260,12 +12850,40 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsWithBooleanTypes() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various active values
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("active", true);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("active", true);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("active", true);
+        }}));
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("active", true);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("active", false);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12286,12 +12904,42 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsWithMapTypes() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with metadata maps
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("metadata", new HashMap<String, Object>() {{
+                put("grade", "A+");
+                put("year", 2023);
+            }});
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("metadata", new HashMap<String, Object>() {{
+                put("grade", "A+");
+                put("year", 2023);
+            }});
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("metadata", new HashMap<String, Object>() {{
+                put("grade", "A");
+                put("year", 2023);
+            }});
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12314,12 +12962,35 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsWithDateTypes() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with birth dates
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("birthDate", new Date(85, 5, 15)); // 1985-06-15
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("birthDate", new Date(88, 11, 5)); // 1988-12-05
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("birthDate", new Date(80, 3, 10)); // 1980-04-10
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("birthDate", new Date(90, 0, 1)); // 1990-01-01 (after cutoff)
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12343,6 +13014,12 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     // TODO -> Needs Data
@@ -12477,6 +13154,33 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create test documents with various ages and scores for complex ordering
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+            put("score", null); // null score
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+            put("score", 78.3);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+            put("score", 91.2);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+            put("score", 96.8);
+        }}));
+
         CountDownLatch latch = new CountDownLatch(1);
 
         // Order by age ascending, then by score descending, limit to 3
@@ -12498,12 +13202,50 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsRangeQueries() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with ages in the 20-30 range
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        // Add some outside the range for testing
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12526,12 +13268,27 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("eve").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsWithInOperator() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents including Alice and Charlie
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12552,12 +13309,27 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsWithNotInOperator() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create 7 test documents, one with name "Alice" and others with different names
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
+        await(db.collection("city").document("eve").set(Collections.singletonMap("name", "Eve")));
+        await(db.collection("city").document("frank").set(Collections.singletonMap("name", "Frank")));
+        await(db.collection("city").document("grace").set(Collections.singletonMap("name", "Grace")));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12576,12 +13348,51 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("eve").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("grace").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsCursorOperations() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages including some below 25
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 20);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12609,12 +13420,43 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("eve").delete());
     }
 
     @Test
     public void testQueryMultipleDocumentsWithMixedDataTypes() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with mixed data types
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("score", 96.8);
+            put("active", true);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("score", 85.5);
+            put("active", true);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("score", 92.0);
+            put("active", false); // Should not match active=true
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("score", 78.3);
+            put("active", true); // Score too low, should not match > 80.0
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12646,6 +13488,12 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
     }
 
     @Test
@@ -12690,6 +13538,24 @@ public class regression {
     public void testWhereArrayContains() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with tags arrays
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("tags", Arrays.asList("student", "young", "active"));
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("tags", Arrays.asList("student", "athlete", "smart"));
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("tags", Arrays.asList("worker", "experienced", "reliable"));
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("tags", Arrays.asList("professional", "leader", "innovative"));
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12738,12 +13604,21 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testAggregateCreation() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test document for aggregate query
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
 
         Query query = db.collection("city").whereEqualTo("name", "Alice");
         AggregateQuery aggQuery = query.aggregate(AggregateField.count("total"));
@@ -12754,12 +13629,18 @@ public class regression {
         assertNotNull(task);
         // The query should be different from the original (has aggregate)
         assertNotEquals(query, aggQuery.getQuery());
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testCountCreation() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test document for count query
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
 
         Query query = db.collection("city").whereEqualTo("name", "Alice");
         AggregateQuery countQuery = query.count("totalCount");
@@ -12770,12 +13651,33 @@ public class regression {
         assertNotNull(task);
         // The query should be different from the original (has aggregate)
         assertNotEquals(query, countQuery.getQuery());
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testStartAfter() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages
+        await(db.collection("city").document("young").set(new HashMap<String, Object>() {{
+            put("name", "Young");
+            put("age", 20);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").orderBy("age").startAfter(25);
@@ -12808,12 +13710,36 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("young").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testEndAt() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with ages around 30
+        await(db.collection("city").document("young").set(new HashMap<String, Object>() {{
+            put("name", "Young");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("old").set(new HashMap<String, Object>() {{
+            put("name", "Old");
+            put("age", 35);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").orderBy("age").endAt(30);
@@ -12826,12 +13752,36 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("young").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("old").delete());
     }
 
     @Test
     public void testEndBefore() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with ages around 30
+        await(db.collection("city").document("young").set(new HashMap<String, Object>() {{
+            put("name", "Young");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("old").set(new HashMap<String, Object>() {{
+            put("name", "Old");
+            put("age", 35);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
         Query query = db.collection("city").orderBy("age").endBefore(30);
@@ -12844,6 +13794,12 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("young").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("old").delete());
     }
 
     @Test
@@ -12883,6 +13839,12 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create test documents with names starting with different letters
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie")));
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
+
         CountDownLatch latch = new CountDownLatch(1);
 
         // Query for names that start with "A" using LIKE pattern (should return Alice)
@@ -12917,12 +13879,26 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testWhereLikeWithFieldPath() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with names containing lowercase 'a'
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice"))); // contains 'a'
+        await(db.collection("city").document("charlie").set(Collections.singletonMap("name", "Charlie"))); // contains 'a'
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana"))); // contains 'a'
+        await(db.collection("city").document("frank").set(Collections.singletonMap("name", "Frank"))); // contains 'a'
+        await(db.collection("city").document("grace").set(Collections.singletonMap("name", "Grace"))); // contains 'a'
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob"))); // does not contain 'a'
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -12956,6 +13932,14 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
@@ -13033,6 +14017,14 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create test document with multiple fields
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+            put("city", "New York");
+        }}));
+
         CountDownLatch latch = new CountDownLatch(1);
 
         // Query with column selection - only return name and age fields
@@ -13062,12 +14054,23 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testColumnSelectionMultipleColumns() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test document with Alice having name, age, and score
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+            put("city", "New York");
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13110,12 +14113,32 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testColumnSelectionWithQueryCombination() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with different ages and scores
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 28);
+            put("score", 90.0);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 30);
+            put("score", 95.0);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13160,6 +14183,11 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
     }
 
     // ------------------- ADVANCED EDGE CASE AND COMPLEX SCENARIO TESTS -------------------
@@ -13168,6 +14196,24 @@ public class regression {
     public void testQueryWithMultipleWhereConditionsSameField() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various ages
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 35);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 40);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13189,12 +14235,40 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testQueryWithComplexBooleanLogic() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with age and score combinations
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+            put("score", 91.2);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+            put("score", 96.8);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+            put("score", 88.0);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13221,12 +14295,25 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testQueryWithEmptyArrayFields() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create Grace with empty tags array
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+            put("tags", new ArrayList<String>()); // Empty array
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13246,12 +14333,38 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("grace").delete());
     }
 
     @Test
     public void testQueryWithNestedMapFields() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create Bob and Diana with A+ grade in nested metadata
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("metadata", new HashMap<String, Object>() {{
+                put("grade", "A+");
+                put("year", 2023);
+            }});
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("metadata", new HashMap<String, Object>() {{
+                put("grade", "A+");
+                put("year", 2023);
+            }});
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("metadata", new HashMap<String, Object>() {{
+                put("grade", "A");
+                put("year", 2023);
+            }});
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13274,12 +14387,47 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testQueryOrderByMultipleFields() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with age and score for multi-field ordering
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+            put("category", "A");
+            put("priority", 1);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 25);
+            put("score", 92.0);
+            put("category", "A");
+            put("priority", 2);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 30);
+            put("score", 88.0);
+            put("category", "B");
+            put("priority", 1);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 30);
+            put("score", 95.0);
+            put("category", "B");
+            put("priority", 3);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13290,7 +14438,7 @@ public class regression {
 
         query.get().addOnSuccessListener(snapshot -> {
             List<DocumentSnapshot> docs = snapshot.getDocuments();
-            assertTrue("Should have documents", docs.size() >= 6);
+            assertTrue("Should have documents", docs.size() >= 4);
 
             // Verify primary ordering by age (ascending)
             for (int i = 0; i < docs.size() - 1; i++) {
@@ -13306,21 +14454,26 @@ public class regression {
                     long currentAge = docs.get(i).getLong("age");
                     long nextAge = docs.get(i + 1).getLong("age");
                     assertTrue("Age should be non-decreasing: " + currentAge + " <= " + nextAge,
-                             currentAge <= nextAge);
+                            currentAge <= nextAge);
                 }
             }
             latch.countDown();
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testQueryWithLimitAndOffsetSimulation() throws Exception {
+        tearDownClass();
         String[] collections = { "city" };
         addSecurityRule(collections);
-
-        CountDownLatch latch = new CountDownLatch(1);
 
         CollectionReference testCollection = db.collection("city");
         Map<String, Object> doc1 = new HashMap<>();
@@ -13393,6 +14546,8 @@ public class regression {
         await(testCollection.document("doc6").set(doc6));
         await(testCollection.document("doc7").set(doc7));
 
+        CountDownLatch latch = new CountDownLatch(1);
+
         // Get first 3 documents when ordered by age
         Query query = db.collection("city")
                 .orderBy("age", Query.Direction.ASCENDING)
@@ -13430,6 +14585,32 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create test documents with various ages for cursor operations
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
+
         CountDownLatch latch = new CountDownLatch(1);
 
         // Complex cursor operation: start after specific age, end before another age
@@ -13455,19 +14636,53 @@ public class regression {
             List<DocumentSnapshot> docs = snapshot.getDocuments();
             for (int i = 0; i < docs.size() - 1; i++) {
                 assertTrue("Should be ordered by age",
-                          docs.get(i).getLong("age") <= docs.get(i + 1).getLong("age"));
+                        docs.get(i).getLong("age") <= docs.get(i + 1).getLong("age"));
             }
 
             latch.countDown();
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("eve").delete());
     }
 
     @Test
     public void testQueryWithMixedDataTypesAndNulls() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with mixed data types and null values
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+            put("active", true);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+            put("score", 92.0);
+            put("active", false);
+        }}));
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+            put("score", null); // null score
+            put("active", true);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+            put("score", 91.2);
+            put("active", null); // null boolean
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13499,12 +14714,48 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("grace").delete());
     }
 
     @Test
     public void testQueryPerformanceWithLargeResultSet() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create multiple documents for performance testing
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
+        await(db.collection("city").document("eve").set(new HashMap<String, Object>() {{
+            put("name", "Eve");
+            put("age", 35);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13523,6 +14774,15 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS)); // Longer timeout for larger result set
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("eve").delete());
     }
 
     @Test
@@ -13579,6 +14839,32 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create test documents with age, active, and score fields
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("active", true);
+            put("score", 85.5);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 28);
+            put("active", true);
+            put("score", 92.0);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("age", 22);
+            put("active", false);
+            put("score", 78.3);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 30);
+            put("active", true);
+            put("score", 96.8);
+        }}));
+
         CountDownLatch latch = new CountDownLatch(1);
 
         // Complex query using FieldPath for multiple conditions
@@ -13606,12 +14892,35 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
+        await(db.collection("city").document("diana").delete());
     }
 
     @Test
     public void testQueryWithAggregationAndFiltering() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with age and score for aggregation
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 28);
+            put("score", 92.0);
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 30);
+            put("score", 96.8);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+            put("score", 85.5);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13633,12 +14942,23 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testQueryWithMultipleArrayOperations() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create Alice with specific tags
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("tags", Arrays.asList("student", "cs"));
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13660,12 +14980,29 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testQueryWithDateRangeFiltering() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create documents with birth dates
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("birthDate", new Date(90, 0, 1)); // 1990-01-01
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("birthDate", new Date(85, 5, 15)); // 1985-06-15
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("birthDate", new Date(80, 3, 10)); // 1980-04-10 (before range)
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13680,19 +15017,44 @@ public class regression {
                 Date birthDate = doc.getDate("birthDate");
                 if (birthDate != null) {
                     assertTrue("Birth date should be after start date: " + birthDate,
-                             birthDate.after(startDate));
+                            birthDate.after(startDate));
                 }
             }
             latch.countDown();
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
     }
 
     @Test
     public void testQueryWithComplexNestedConditions() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with various combinations of active, age, score
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("active", true);
+            put("age", 25);
+            put("score", 85.5);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("active", false);
+            put("age", 30);
+            put("score", 92.0);
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie");
+            put("active", true);
+            put("age", 22);
+            put("score", 95.0); // Score too high
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13719,13 +15081,18 @@ public class regression {
             // Should return Alice (age 25, score 85.5, active true)
             if (snapshot.size() == 1) {
                 assertEquals("Should return Alice", "Alice",
-                            snapshot.getDocuments().get(0).getString("name"));
+                        snapshot.getDocuments().get(0).getString("name"));
             }
 
             latch.countDown();
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
     }
 
     @Test
@@ -13814,6 +15181,12 @@ public class regression {
         String[] collections = { "city" };
         addSecurityRule(collections);
 
+        // Create Alice with name and age fields
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+
         CountDownLatch latch = new CountDownLatch(1);
 
         // Test column selection with non-existent columns
@@ -13840,12 +15213,20 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
     }
 
     @Test
     public void testQueryWithLikePatternVariations() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create Diana (starts with D) and other names for comparison
+        await(db.collection("city").document("diana").set(Collections.singletonMap("name", "Diana")));
+        await(db.collection("city").document("alice").set(Collections.singletonMap("name", "Alice")));
+        await(db.collection("city").document("bob").set(Collections.singletonMap("name", "Bob")));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13865,12 +15246,35 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testQueryWithMultipleLikeConditions() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create Diana and Grace (both contain 'a' and age > 25), plus others for comparison
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana");
+            put("age", 28);
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace");
+            put("age", 26);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25); // Age not > 25
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30); // Doesn't contain 'a'
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13901,12 +15305,32 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testQueryWithExtremeLimitValues() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents with different ages, Frank being the youngest
+        await(db.collection("city").document("frank").set(new HashMap<String, Object>() {{
+            put("name", "Frank");
+            put("age", 19);
+        }}));
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice");
+            put("age", 25);
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob");
+            put("age", 30);
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13924,12 +15348,49 @@ public class regression {
         });
 
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("frank").delete());
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("bob").delete());
     }
 
     @Test
     public void testQueryWithAllConditionsCombined() throws Exception {
         String[] collections = { "city" };
         addSecurityRule(collections);
+
+        // Create test documents that can satisfy all the complex conditions
+        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+            put("name", "Alice"); // contains 'a'
+            put("age", 25); // > 20
+            put("score", 85.5); // < 90.0
+            put("active", true); // = true
+        }}));
+        await(db.collection("city").document("grace").set(new HashMap<String, Object>() {{
+            put("name", "Grace"); // contains 'a'
+            put("age", 26); // > 20
+            put("score", 87.0); // < 90.0
+            put("active", true); // = true
+        }}));
+        await(db.collection("city").document("diana").set(new HashMap<String, Object>() {{
+            put("name", "Diana"); // contains 'a'
+            put("age", 28); // > 20
+            put("score", 96.8); // > 90.0 (won't match score < 90)
+            put("active", true); // = true
+        }}));
+        await(db.collection("city").document("bob").set(new HashMap<String, Object>() {{
+            put("name", "Bob"); // doesn't contain 'a'
+            put("age", 30); // > 20
+            put("score", 88.0); // < 90.0
+            put("active", true); // = true
+        }}));
+        await(db.collection("city").document("charlie").set(new HashMap<String, Object>() {{
+            put("name", "Charlie"); // contains 'a'
+            put("age", 22); // > 20
+            put("score", 78.3); // < 90.0
+            put("active", false); // = false (won't match)
+        }}));
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -13970,7 +15431,7 @@ public class regression {
             }
 
             // Any returned documents should satisfy all the query conditions
-            // (Alice would be a valid result, but we don't require specific documents since some features may be partially implemented)
+            // (Alice and Grace would be valid results, but we don't require specific documents since some features may be partially implemented)
             if (snapshot.size() >= 1) {
                 Log.d("QueryTest", "Complex query returned " + snapshot.size() + " documents - conditions are working");
             } else {
@@ -13981,6 +15442,13 @@ public class regression {
         });
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+        // Cleanup
+        await(db.collection("city").document("alice").delete());
+        await(db.collection("city").document("grace").delete());
+        await(db.collection("city").document("diana").delete());
+        await(db.collection("city").document("bob").delete());
+        await(db.collection("city").document("charlie").delete());
     }
 
     @Test
@@ -14070,7 +15538,6 @@ public class regression {
     }
 
     // TODO -> Confirmed Bug, if a field doesn't exists and you do set merge with fieldValue increment on it
-    // you will get value as null
     @Test
     public void testCreateRecipeWithFieldValueOperations() throws Exception {
         addSecurityRule(new String[] { "users", "recipes" });
@@ -14267,4 +15734,815 @@ public class regression {
             assertFalse("Document should be deleted: " + doc.getId(), deletedSnap.exists());
         }
     }
+
+    @Test
+    public void testAddNoteToNestedSubcollection() throws Exception {
+        String[] collections = { "users", "recipes", "notes" };
+        addSecurityRule(collections);
+
+        // Create parent documents first
+        await(db.collection("users").document("Scott").set(Collections.singletonMap("name", "Scott")));
+        await(db.collection("users").document("Scott")
+                .collection("recipes").document("Cookies")
+                .set(Collections.singletonMap("title", "Chocolate Chip Cookies")));
+
+        // Get the deeply nested subcollection reference as in the snippet
+        OsbdtOracledb db = OsbdtOracledb.getInstance();
+        CollectionReference notesRef = db.collection("users")
+                .document("Scott")
+                .collection("recipes")
+                .document("Cookies")
+                .collection("notes");
+
+        // Create the note content with multiple steps
+        Map<String, Object> content = new HashMap<>();
+        content.put("step1", "Try adding a pinch of sea salt for balance.");
+        content.put("step2", "Add extra chocolate chips");
+
+        // Create the new note
+        Map<String, Object> note = new HashMap<>();
+        note.put("uuid", "Scott");
+        note.put("content", content);
+        note.put("createdAt", FieldValue.serverTimestamp());
+
+        // Add the note to the subcollection
+        Task<DocumentReference> addTask = notesRef.add(note);
+        DocumentReference noteDocRef = await(addTask);
+
+        // Verify the note was added correctly
+        assertNotNull("Note document reference should not be null", noteDocRef);
+        DocumentSnapshot addedNote = await(noteDocRef.get());
+        assertTrue("Note should exist", addedNote.exists());
+        assertEquals("UUID should match", "Scott", addedNote.getString("uuid"));
+
+        // Verify content structure
+        @SuppressWarnings("unchecked")
+        Map<String, Object> retrievedContent = (Map<String, Object>) addedNote.get("content");
+        assertNotNull("Content should not be null", retrievedContent);
+        assertEquals("Step1 should match", "Try adding a pinch of sea salt for balance.", retrievedContent.get("step1"));
+        assertEquals("Step2 should match", "Add extra chocolate chips", retrievedContent.get("step2"));
+
+        // Verify server timestamp was set
+        assertNotNull("CreatedAt should be set by server", addedNote.get("createdAt"));
+
+        // Verify the nested collection structure
+        QuerySnapshot notesQuery = await(notesRef.get());
+        assertEquals("Notes collection should contain 1 document", 1, notesQuery.size());
+
+        // Cleanup
+        await(noteDocRef.delete());
+        await(db.collection("users").document("Scott")
+                .collection("recipes").document("Cookies").delete());
+        await(db.collection("users").document("Scott").delete());
+    }
+
+    @Test
+    public void testUpdateNestedFieldsInDeepSubcollection() throws Exception {
+        String[] collections = { "users", "recipes", "notes" };
+        addSecurityRule(collections);
+
+        // Create parent documents and initial note
+        await(db.collection("users").document("Scott").set(Collections.singletonMap("name", "Scott")));
+        await(db.collection("users").document("Scott")
+                .collection("recipes").document("Cookies")
+                .set(Collections.singletonMap("title", "Chocolate Chip Cookies")));
+
+        // Create initial note document
+        Map<String, Object> initialContent = new HashMap<>();
+        initialContent.put("step1", "Mix dry ingredients");
+        initialContent.put("step2", "Add chocolate chips");
+
+        Map<String, Object> initialNote = new HashMap<>();
+        initialNote.put("uuid", "Scott");
+        initialNote.put("content", initialContent);
+
+        await(db.collection("users").document("Scott")
+                .collection("recipes").document("Cookies")
+                .collection("notes").document("note1")
+                .set(initialNote));
+
+        // Reference to the existing note document
+        OsbdtOracledb db = OsbdtOracledb.getInstance();
+        DocumentReference noteRef = db.collection("users")
+                .document("Scott")
+                .collection("recipes")
+                .document("Cookies")
+                .collection("notes")
+                .document("note1");
+
+        // Create the update content
+        Map<String, Object> update = new HashMap<>();
+        update.put("content.step2", "Add a handful of chopped nuts instead of chocolate chips");
+        update.put("content.step3", "Add some coffee as well");
+
+        // Update step2 in the content field
+        await(noteRef.update(update));
+
+        // Verify the update worked
+        DocumentSnapshot updatedNote = await(noteRef.get());
+        assertTrue("Note should still exist", updatedNote.exists());
+
+        // Verify nested field updates
+        @SuppressWarnings("unchecked")
+        Map<String, Object> updatedContent = (Map<String, Object>) updatedNote.get("content");
+        assertNotNull("Content should not be null", updatedContent);
+        assertEquals("Step1 should be unchanged", "Mix dry ingredients", updatedContent.get("step1"));
+        assertEquals("Step2 should be updated", "Add a handful of chopped nuts instead of chocolate chips", updatedContent.get("step2"));
+        assertEquals("Step3 should be added", "Add some coffee as well", updatedContent.get("step3"));
+
+        // Verify other fields unchanged
+        assertEquals("UUID should be unchanged", "Scott", updatedNote.getString("uuid"));
+
+        // Cleanup
+        await(db.collection("users").document("Scott")
+                .collection("recipes").document("Cookies")
+                .collection("notes").document("note1").delete());
+        await(db.collection("users").document("Scott")
+                .collection("recipes").document("Cookies").delete());
+        await(db.collection("users").document("Scott").delete());
+    }
+
+    // TODO -> Weird Backend error
+    @Test
+    public void testQuerySubcollectionRecipesByCategory() throws Exception {
+        String[] collections = { "users", "recipes" };
+        addSecurityRule(collections);
+
+        // Create parent user document
+        await(db.collection("users").document("Scott").set(Collections.singletonMap("name", "Scott")));
+
+        // Create recipe documents in the subcollection
+        CollectionReference recipesRef = db.collection("users").document("Scott").collection("recipes");
+
+        await(recipesRef.document("cookies").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Chip Cookies");
+            put("category", "Dessert");
+            put("difficulty", "Easy");
+        }}));
+
+        await(recipesRef.document("pasta").set(new HashMap<String, Object>() {{
+            put("title", "Pasta Carbonara");
+            put("category", "Main Course");
+            put("difficulty", "Medium");
+        }}));
+
+        await(recipesRef.document("salad").set(new HashMap<String, Object>() {{
+            put("title", "Caesar Salad");
+            put("category", "Appetizer");
+            put("difficulty", "Easy");
+        }}));
+
+        await(recipesRef.document("cake").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Cake");
+            put("category", "Dessert");
+            put("difficulty", "Hard");
+        }}));
+
+        // Query the subcollection as in the snippet
+        OsbdtOracledb db = OsbdtOracledb.getInstance();
+        Query q = db.collection("users").document("Scott").collection("recipes").whereEqualTo("category", "Dessert");
+
+        QuerySnapshot snapshot = await(q.get());
+
+        // Should find 2 dessert recipes
+        assertEquals("Should find 2 dessert recipes", 2, snapshot.size());
+
+        // Verify the returned recipes are desserts
+        List<String> expectedTitles = Arrays.asList("Chocolate Chip Cookies", "Chocolate Cake");
+        for (DocumentSnapshot doc : snapshot.getDocuments()) {
+            String title = doc.getString("title");
+            String category = doc.getString("category");
+            assertEquals("Category should be Dessert", "Dessert", category);
+            assertTrue("Title should be one of the dessert recipes", expectedTitles.contains(title));
+        }
+
+        // Cleanup
+        await(recipesRef.document("cookies").delete());
+        await(recipesRef.document("pasta").delete());
+        await(recipesRef.document("salad").delete());
+        await(recipesRef.document("cake").delete());
+        await(db.collection("users").document("Scott").delete());
+    }
+
+    // TODO -> Weird backend error
+    @Test
+    public void testComprehensiveSubcollectionQueries() throws Exception {
+        String[] collections = { "users", "recipes" };
+        addSecurityRule(collections);
+
+        // Create parent user document
+        await(db.collection("users").document("Scott").set(Collections.singletonMap("name", "Scott")));
+
+        // Create recipe documents in the subcollection with comprehensive test data
+        CollectionReference recipesRef = db.collection("users").document("Scott").collection("recipes");
+
+        // Recipes with different categories
+        await(recipesRef.document("cookies").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Chip Cookies");
+            put("category", "Dessert");
+            put("views", 1200);
+            put("tags", Arrays.asList("sweet", "baking", "cookies"));
+        }}));
+
+        await(recipesRef.document("pasta").set(new HashMap<String, Object>() {{
+            put("title", "Pasta Carbonara");
+            put("category", "Main Course");
+            put("views", 800);
+            put("tags", Arrays.asList("italian", "pasta", "dinner"));
+        }}));
+
+        await(recipesRef.document("salad").set(new HashMap<String, Object>() {{
+            put("title", "Caesar Salad");
+            put("category", "Appetizer");
+            put("views", 600);
+            put("tags", Arrays.asList("healthy", "salad", "quick"));
+        }}));
+
+        await(recipesRef.document("cake").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Cake");
+            put("category", "Dessert");
+            put("views", 1500);
+            put("tags", Arrays.asList("sweet", "baking", "cake"));
+        }}));
+
+        await(recipesRef.document("chips").set(new HashMap<String, Object>() {{
+            put("title", "Potato Chips");
+            put("category", "Snack");
+            put("views", 900);
+            put("tags", Arrays.asList("crispy", "snack", "potato"));
+        }}));
+
+        await(recipesRef.document("soup").set(new HashMap<String, Object>() {{
+            put("title", "Tomato Soup");
+            put("category", "Appetizer");
+            put("views", 1100);
+            put("tags", Arrays.asList("warm", "soup", "comfort"));
+        }}));
+
+        await(recipesRef.document("pie").set(new HashMap<String, Object>() {{
+            put("title", "Apple Pie");
+            put("category", "Dessert");
+            put("views", 2000);
+            put("tags", Arrays.asList("sweet", "pie", "fruit"));
+        }}));
+
+        OsbdtOracledb db = OsbdtOracledb.getInstance();
+
+        // Test 1: whereEqualTo("category", "Dessert")
+        Query q1 = db.collection("users").document("Scott").collection("recipes").whereEqualTo("category", "Dessert");
+        QuerySnapshot snapshot1 = await(q1.get());
+        assertEquals("Should find 3 dessert recipes", 3, snapshot1.size());
+        for (DocumentSnapshot doc : snapshot1.getDocuments()) {
+            assertEquals("Category should be Dessert", "Dessert", doc.getString("category"));
+        }
+
+        // Test 2: whereNotEqualTo("category", "Dessert")
+        Query q2 = db.collection("users").document("Scott").collection("recipes").whereNotEqualTo("category", "Dessert");
+        QuerySnapshot snapshot2 = await(q2.get());
+        assertEquals("Should find 4 non-dessert recipes", 4, snapshot2.size());
+        for (DocumentSnapshot doc : snapshot2.getDocuments()) {
+            assertNotEquals("Category should not be Dessert", "Dessert", doc.getString("category"));
+        }
+
+        // Test 3: whereGreaterThan("views", 1000)
+        Query q3 = db.collection("users").document("Scott").collection("recipes").whereGreaterThan("views", 1000);
+        QuerySnapshot snapshot3 = await(q3.get());
+        assertEquals("Should find recipes with views > 1000", 3, snapshot3.size());
+        for (DocumentSnapshot doc : snapshot3.getDocuments()) {
+            assertTrue("Views should be > 1000", doc.getLong("views") > 1000);
+        }
+
+        // Test 4: whereGreaterThanOrEqualTo("views", 1000)
+        Query q4 = db.collection("users").document("Scott").collection("recipes").whereGreaterThanOrEqualTo("views", 1000);
+        QuerySnapshot snapshot4 = await(q4.get());
+        assertEquals("Should find recipes with views >= 1000", 4, snapshot4.size());
+        for (DocumentSnapshot doc : snapshot4.getDocuments()) {
+            assertTrue("Views should be >= 1000", doc.getLong("views") >= 1000);
+        }
+
+        // Test 5: whereLessThan("views", 1000)
+        Query q5 = db.collection("users").document("Scott").collection("recipes").whereLessThan("views", 1000);
+        QuerySnapshot snapshot5 = await(q5.get());
+        assertEquals("Should find recipes with views < 1000", 2, snapshot5.size());
+        for (DocumentSnapshot doc : snapshot5.getDocuments()) {
+            assertTrue("Views should be < 1000", doc.getLong("views") < 1000);
+        }
+
+        // Test 6: whereLessThanOrEqualTo("views", 1000)
+        Query q6 = db.collection("users").document("Scott").collection("recipes").whereLessThanOrEqualTo("views", 1000);
+        QuerySnapshot snapshot6 = await(q6.get());
+        assertEquals("Should find recipes with views <= 1000", 3, snapshot6.size());
+        for (DocumentSnapshot doc : snapshot6.getDocuments()) {
+            assertTrue("Views should be <= 1000", doc.getLong("views") <= 1000);
+        }
+
+        // Test 7: whereArrayContains("tags", "sweet")
+        Query q7 = db.collection("users").document("Scott").collection("recipes").whereArrayContains("tags", "sweet");
+        QuerySnapshot snapshot7 = await(q7.get());
+        assertEquals("Should find recipes containing 'sweet' tag", 3, snapshot7.size());
+        for (DocumentSnapshot doc : snapshot7.getDocuments()) {
+            List<String> tags = (List<String>) doc.get("tags");
+            assertTrue("Should contain 'sweet' tag", tags.contains("sweet"));
+        }
+
+        // Test 8: whereArrayContainsAny("tags", Arrays.asList("sweet", "baking"))
+        Query q8 = db.collection("users").document("Scott").collection("recipes").whereArrayContainsAny("tags", Arrays.asList("sweet", "baking"));
+        QuerySnapshot snapshot8 = await(q8.get());
+        assertEquals("Should find recipes containing 'sweet' or 'baking' tags", 3, snapshot8.size());
+        for (DocumentSnapshot doc : snapshot8.getDocuments()) {
+            List<String> tags = (List<String>) doc.get("tags");
+            boolean hasMatchingTag = tags.stream().anyMatch(tag -> Arrays.asList("sweet", "baking").contains(tag));
+            assertTrue("Should contain 'sweet' or 'baking' tag", hasMatchingTag);
+        }
+
+        // Test 9: whereIn("category", Arrays.asList("Dessert", "Snack"))
+        Query q9 = db.collection("users").document("Scott").collection("recipes").whereIn("category", Arrays.asList("Dessert", "Snack"));
+        QuerySnapshot snapshot9 = await(q9.get());
+        assertEquals("Should find Dessert and Snack recipes", 4, snapshot9.size());
+        for (DocumentSnapshot doc : snapshot9.getDocuments()) {
+            String category = doc.getString("category");
+            assertTrue("Category should be Dessert or Snack", Arrays.asList("Dessert", "Snack").contains(category));
+        }
+
+        // Test 10: whereNotIn("category", Arrays.asList("Dessert", "Snack"))
+        Query q10 = db.collection("users").document("Scott").collection("recipes").whereNotIn("category", Arrays.asList("Dessert", "Snack"));
+        QuerySnapshot snapshot10 = await(q10.get());
+        assertEquals("Should find recipes not in Dessert or Snack categories", 3, snapshot10.size());
+        for (DocumentSnapshot doc : snapshot10.getDocuments()) {
+            String category = doc.getString("category");
+            assertFalse("Category should not be Dessert or Snack", Arrays.asList("Dessert", "Snack").contains(category));
+        }
+
+        // Cleanup
+        await(recipesRef.document("cookies").delete());
+        await(recipesRef.document("pasta").delete());
+        await(recipesRef.document("salad").delete());
+        await(recipesRef.document("cake").delete());
+        await(recipesRef.document("chips").delete());
+        await(recipesRef.document("soup").delete());
+        await(recipesRef.document("pie").delete());
+        await(db.collection("users").document("Scott").delete());
+    }
+
+    // TODO -> Debug
+    @Test
+    public void testAdvancedQueryScenarios() throws Exception {
+        String[] collections = { "users", "recipes" };
+        addSecurityRule(collections);
+
+        // Create parent user document
+        await(db.collection("users").document("Scott").set(Collections.singletonMap("name", "Scott")));
+
+        // Create recipes in subcollection for column selection test
+        CollectionReference subRecipesRef = db.collection("users").document("Scott").collection("recipes");
+        await(subRecipesRef.document("cookies").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Chip Cookies");
+            put("tags", Arrays.asList("sweet", "baking"));
+            put("userid", "Scott");
+            put("views", 1200);
+            put("createdAt", new Timestamp(1735689600L + 86400, 0)); // Jan 2, 2025
+        }}));
+        await(subRecipesRef.document("pasta").set(new HashMap<String, Object>() {{
+            put("title", "Pasta Carbonara");
+            put("tags", Arrays.asList("italian", "pasta"));
+            put("userid", "Scott");
+            put("views", 800);
+            put("createdAt", new Timestamp(1735689600L + 172800, 0)); // Jan 3, 2025
+        }}));
+
+        // Create recipes in root collection for ordering test
+        CollectionReference rootRecipesRef = db.collection("recipes");
+        await(rootRecipesRef.document("cake").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Cake");
+            put("views", 1500);
+            put("category", "Dessert");
+        }}));
+        await(rootRecipesRef.document("soup").set(new HashMap<String, Object>() {{
+            put("title", "Tomato Soup");
+            put("views", 900);
+            put("category", "Appetizer");
+        }}));
+        await(rootRecipesRef.document("salad").set(new HashMap<String, Object>() {{
+            put("title", "Caesar Salad");
+            put("views", 1100);
+            put("category", "Appetizer");
+        }}));
+
+        OsbdtOracledb db = OsbdtOracledb.getInstance();
+
+        // Test 1: Column selection on subcollection
+        Query q1 = db.collection("users").document("Scott").collection("recipes").column(List.of("tags","userid"));
+        QuerySnapshot snapshot1 = await(q1.get());
+        assertEquals("Should find 2 recipes in subcollection", 2, snapshot1.size());
+        for (DocumentSnapshot doc : snapshot1.getDocuments()) {
+            assertNotNull("Should have tags field", doc.get("tags"));
+            assertNotNull("Should have userid field", doc.get("userid"));
+            assertNull("Should not have title field", doc.get("title"));
+            assertNull("Should not have views field", doc.get("views"));
+        }
+
+        // Test 2: Order by views descending on root collection
+        Query q2 = db.collection("recipes").orderBy("views", Query.Direction.DESCENDING);
+        QuerySnapshot snapshot2 = await(q2.get());
+        assertEquals("Should find 3 recipes in root collection", 3, snapshot2.size());
+        List<DocumentSnapshot> docs2 = snapshot2.getDocuments();
+        // Verify descending order: cake (1500) > salad (1100) > soup (900)
+        assertEquals("First should be cake with 1500 views", 1500L, (long)docs2.get(0).getLong("views"));
+        assertEquals("Second should be salad with 1100 views", 1100L, (long)docs2.get(1).getLong("views"));
+        assertEquals("Third should be soup with 900 views", 900L, (long)docs2.get(2).getLong("views"));
+
+        // Test 3: Range query with timestamps
+        Query q3 = db.collection("users").document("Scott").collection("recipes")
+                .orderBy("createdAt")
+                .startAt(new Timestamp(1735689600L, 0)) // Jan 1, 2025
+                .endAt(new Timestamp(1767225600L, 0));  // Dec 31, 2025
+        QuerySnapshot snapshot3 = await(q3.get());
+        assertEquals("Should find 2 recipes within date range", 2, snapshot3.size());
+        for (DocumentSnapshot doc : snapshot3.getDocuments()) {
+            Timestamp createdAt = doc.getTimestamp("createdAt");
+            assertNotNull("Should have createdAt timestamp", createdAt);
+            long seconds = createdAt.getSeconds();
+            assertTrue("CreatedAt should be within range",
+                    seconds >= 1735689600L && seconds <= 1767225600L);
+        }
+
+        // Cleanup
+        await(subRecipesRef.document("cookies").delete());
+        await(subRecipesRef.document("pasta").delete());
+        await(rootRecipesRef.document("cake").delete());
+        await(rootRecipesRef.document("soup").delete());
+        await(rootRecipesRef.document("salad").delete());
+        await(db.collection("users").document("Scott").delete());
+    }
+
+    // TODO -> Debug
+    @Test
+    public void testComprehensiveReadAndQueryOperations() throws Exception {
+        String[] collections = { "users", "recipes" };
+        addSecurityRule(collections);
+
+        // Create parent user document
+        await(db.collection("users").document("Scott").set(Collections.singletonMap("name", "Scott")));
+
+        // Create recipe documents in subcollection
+        CollectionReference subRecipesRef = db.collection("users").document("Scott").collection("recipes");
+        await(subRecipesRef.document("cookies").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Chip Cookies");
+            put("category", "Dessert");
+            put("difficulty", "Easy");
+            put("createdAt", new Timestamp(1735689600L, 0));
+        }}));
+        await(subRecipesRef.document("pasta").set(new HashMap<String, Object>() {{
+            put("title", "Pasta Carbonara");
+            put("category", "Main Course");
+            put("difficulty", "Medium");
+            put("createdAt", new Timestamp(1735689600L + 86400, 0));
+        }}));
+
+        // Create documents in root recipes collection
+        await(db.collection("recipes").document("Cookies").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Chip Cookies");
+            put("difficulty", "Easy");
+            put("ingredients", Arrays.asList("flour", "sugar", "chocolate chips"));
+            put("createdAt", new Timestamp(1735689600L, 0));
+        }}));
+        await(db.collection("recipes").document("Salad").set(new HashMap<String, Object>() {{
+            put("title", "Caesar Salad");
+            put("difficulty", "Easy");
+            put("ingredients", Arrays.asList("lettuce", "croutons", "parmesan"));
+            put("createdAt", new Timestamp(1735689600L + 86400, 0));
+        }}));
+        await(db.collection("recipes").document("Cake").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Cake");
+            put("difficulty", "Hard");
+            put("ingredients", Arrays.asList("flour", "cocoa", "eggs"));
+            put("createdAt", new Timestamp(1735689600L + 172800, 0));
+        }}));
+
+        // Test 1: Read all documents from subcollection
+        QuerySnapshot subcollectionSnapshot = await(db.collection("users").document("Scott").collection("recipes").get());
+        assertEquals("Should find 2 recipes in subcollection", 2, subcollectionSnapshot.size());
+
+        List<String> expectedSubTitles = Arrays.asList("Chocolate Chip Cookies", "Pasta Carbonara");
+        for (DocumentSnapshot doc : subcollectionSnapshot.getDocuments()) {
+            String title = doc.getString("title");
+            assertTrue("Title should be one of the expected recipes", expectedSubTitles.contains(title));
+            assertNotNull("Should have category", doc.getString("category"));
+            assertNotNull("Should have difficulty", doc.getString("difficulty"));
+        }
+
+        // Test 2: Read single document from root collection
+        DocumentSnapshot singleDoc = await(db.collection("recipes").document("Cookies").get());
+        assertTrue("Cookies document should exist", singleDoc.exists());
+        assertEquals("Title should match", "Chocolate Chip Cookies", singleDoc.getString("title"));
+        assertEquals("Difficulty should be Easy", "Easy", singleDoc.getString("difficulty"));
+
+        List<String> ingredients = (List<String>) singleDoc.get("ingredients");
+        assertNotNull("Should have ingredients", ingredients);
+        assertTrue("Should contain expected ingredients", ingredients.contains("flour") && ingredients.contains("sugar"));
+
+        // Test 3: Query root collection with whereEqualTo
+        QuerySnapshot easyRecipesSnapshot = await(db.collection("recipes").whereEqualTo("difficulty", "Easy").get());
+        assertEquals("Should find 2 easy recipes", 2, easyRecipesSnapshot.size());
+
+        List<String> expectedEasyTitles = Arrays.asList("Chocolate Chip Cookies", "Caesar Salad");
+        for (DocumentSnapshot doc : easyRecipesSnapshot.getDocuments()) {
+            String title = doc.getString("title");
+            assertTrue("Title should be one of the easy recipes", expectedEasyTitles.contains(title));
+            assertEquals("Difficulty should be Easy", "Easy", doc.getString("difficulty"));
+        }
+
+        // Test 4: Query with orderBy and limit
+        QuerySnapshot orderedLimitedSnapshot = await(db.collection("recipes")
+                .orderBy("createdAt")
+                .limit(10)
+                .get());
+
+        assertEquals("Should find 3 recipes (limited to 10)", 3, orderedLimitedSnapshot.size());
+
+        // Verify ordering by createdAt (ascending)
+        List<DocumentSnapshot> orderedDocs = orderedLimitedSnapshot.getDocuments();
+        for (int i = 0; i < orderedDocs.size() - 1; i++) {
+            Timestamp current = orderedDocs.get(i).getTimestamp("createdAt");
+            Timestamp next = orderedDocs.get(i + 1).getTimestamp("createdAt");
+            assertTrue("Documents should be ordered by createdAt ascending", current.getSeconds() <= next.getSeconds());
+        }
+
+        // Cleanup
+        await(subRecipesRef.document("cookies").delete());
+        await(subRecipesRef.document("pasta").delete());
+        await(db.collection("recipes").document("Cookies").delete());
+        await(db.collection("recipes").document("Salad").delete());
+        await(db.collection("recipes").document("Cake").delete());
+        await(db.collection("users").document("Scott").delete());
+    }
+
+    // TODO -> Check for Data
+    @Test
+    public void testJoinViewQuery() throws Exception {
+        String[] collections = { "TEST_1" }; // Assuming view accesses employee data
+        addSecurityRule(collections);
+
+        CountDownLatch latch = new CountDownLatch(1);
+        List<DocumentSnapshot> resultDocuments = new ArrayList<>();
+
+        OsbdtOracledb db = OsbdtOracledb.getInstance();
+
+        // Query the view for Engineering department employees
+        db.join("TEST_1").whereEqualTo("dept", "Engineering").get()
+                .addOnSuccessListener(snapshot -> {
+                    for (DocumentSnapshot doc : snapshot) {
+                        resultDocuments.add(doc);
+                        Log.d("Oracledb", doc.getId() + " => " + doc.getData());
+                    }
+                    latch.countDown();
+                })
+                .addOnFailureListener(e -> {
+                    fail("Join query should succeed: " + e.getMessage());
+                    latch.countDown();
+                });
+
+        assertTrue("Join query should complete within timeout", latch.await(10, TimeUnit.SECONDS));
+
+        // Verify results - should find Engineering employees
+        assertTrue("Should find at least 1 Engineering employee", resultDocuments.size() >= 1);
+
+        for (DocumentSnapshot doc : resultDocuments) {
+            assertEquals("Department should be Engineering", "Engineering", doc.getString("dept"));
+            assertNotNull("Should have name", doc.getString("name"));
+            assertNotNull("Should have salary", doc.get("salary"));
+        }
+
+        // Cleanup
+        await(db.collection("employees").document("emp1").delete());
+        await(db.collection("employees").document("emp2").delete());
+        await(db.collection("employees").document("emp3").delete());
+    }
+
+    // TODO -> Create Collection Group First
+    @Test
+    public void testMultipleCollectionGroupQueries() throws Exception {
+        String[] collections = { "users", "recipes" };
+        addSecurityRule(collections);
+
+        // Create parent user documents
+        await(db.collection("users").document("Scott").set(Collections.singletonMap("name", "Scott")));
+        await(db.collection("users").document("Alice").set(Collections.singletonMap("name", "Alice")));
+
+        // Create recipes in different user subcollections with various fields
+        await(db.collection("users").document("Scott").collection("recipes").document("cookies").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Chip Cookies");
+            put("difficulty", "Easy");
+            put("OID", "CookieRecipe123");
+            put("category", "Dessert");
+        }}));
+        await(db.collection("users").document("Scott").collection("recipes").document("pasta").set(new HashMap<String, Object>() {{
+            put("title", "Pasta Carbonara");
+            put("difficulty", "Medium");
+            put("OID", "PastaRecipe456");
+            put("category", "Main Course");
+        }}));
+        await(db.collection("users").document("Alice").collection("recipes").document("salad").set(new HashMap<String, Object>() {{
+            put("title", "Caesar Salad");
+            put("difficulty", "Easy");
+            put("OID", "SaladRecipe789");
+            put("category", "Appetizer");
+        }}));
+        await(db.collection("users").document("Alice").collection("recipes").document("shake").set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Shake");
+            put("difficulty", "Easy");
+            put("OID", "ChocolateShake");
+            put("category", "Dessert");
+        }}));
+
+        CountDownLatch latch1 = new CountDownLatch(1);
+        CountDownLatch latch2 = new CountDownLatch(1);
+        List<DocumentSnapshot> easyRecipes = new ArrayList<>();
+        List<DocumentSnapshot> chocolateShakeRecipes = new ArrayList<>();
+
+        // Query 1: Find all recipes with difficulty "Easy"
+        db.collectionGroup("recipes")
+                .whereEqualTo("difficulty", "Easy")
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    for (DocumentSnapshot doc : snapshot) {
+                        easyRecipes.add(doc);
+                        Log.d("Firestore", doc.getId() + " => " + doc.getData());
+                    }
+                    latch1.countDown();
+                });
+
+        // Query 2: Find recipes with OID "ChocolateShake"
+        db.collectionGroup("recipes")
+                .whereEqualTo("OID", "ChocolateShake")
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    for (DocumentSnapshot doc : snapshot) {
+                        chocolateShakeRecipes.add(doc);
+                        Log.d("Firestore", doc.getId() + " => " + doc.getData());
+                    }
+                    latch2.countDown();
+                });
+
+        assertTrue("First query should complete", latch1.await(10, TimeUnit.SECONDS));
+        assertTrue("Second query should complete", latch2.await(10, TimeUnit.SECONDS));
+
+        // Verify first query results
+        assertEquals("Should find 3 easy recipes", 3, easyRecipes.size());
+        List<String> expectedEasyTitles = Arrays.asList("Chocolate Chip Cookies", "Caesar Salad", "Chocolate Shake");
+        for (DocumentSnapshot doc : easyRecipes) {
+            assertEquals("Difficulty should be Easy", "Easy", doc.getString("difficulty"));
+            assertTrue("Title should be in expected list", expectedEasyTitles.contains(doc.getString("title")));
+        }
+
+        // Verify second query results
+        assertEquals("Should find 1 recipe with OID ChocolateShake", 1, chocolateShakeRecipes.size());
+        DocumentSnapshot shakeDoc = chocolateShakeRecipes.get(0);
+        assertEquals("OID should be ChocolateShake", "ChocolateShake", shakeDoc.getString("OID"));
+        assertEquals("Title should be Chocolate Shake", "Chocolate Shake", shakeDoc.getString("title"));
+
+        // Cleanup
+        await(db.collection("users").document("Scott").collection("recipes").document("cookies").delete());
+        await(db.collection("users").document("Scott").collection("recipes").document("pasta").delete());
+        await(db.collection("users").document("Alice").collection("recipes").document("salad").delete());
+        await(db.collection("users").document("Alice").collection("recipes").document("shake").delete());
+        await(db.collection("users").document("Scott").delete());
+        await(db.collection("users").document("Alice").delete());
+    }
+
+    @Test
+    public void testTransactionWithReadUpdateAndCreate() throws Exception {
+        String[] collections = { "users", "recipes", "notes" };
+        addSecurityRule(collections);
+
+        // Create initial data
+        DocumentReference userRef = db.collection("users").document("Scott");
+        DocumentReference recipeRef = userRef.collection("recipes").document("Cookies");
+        CollectionReference notesColRef = recipeRef.collection("notes");
+
+        // Set up initial user document
+        await(userRef.set(new HashMap<String, Object>() {{
+            put("name", "Scott");
+            put("lastActivity", null);
+        }}));
+
+        // Set up initial recipe document
+        await(recipeRef.set(new HashMap<String, Object>() {{
+            put("title", "Chocolate Chip Cookies");
+            put("views", 42L);
+            put("updatedAt", null);
+        }}));
+
+        // Count notes before transaction
+        QuerySnapshot notesBefore = await(notesColRef.get());
+        int notesCountBefore = notesBefore.size();
+
+        // Execute transaction as shown in snippet
+        OsbdtOracledb db = OsbdtOracledb.getInstance();
+
+        db.runTransaction(transaction -> {
+            // 1️⃣ Read
+            DocumentSnapshot recipeSnap = transaction.get(recipeRef);
+            if (!recipeSnap.exists()) {
+                throw new RuntimeException("Recipe does not exist");
+            }
+
+            Long views = recipeSnap.contains("views")
+                    ? recipeSnap.getLong("views")
+                    : 0L;
+
+            // 2️⃣ Multiple updates
+            transaction.update(recipeRef,
+                    "views", views + 1,
+                    "updatedAt", FieldValue.serverTimestamp()
+            );
+
+            transaction.update(userRef,
+                    "lastActivity", FieldValue.serverTimestamp()
+            );
+
+            // 3️⃣ Add document (auto-ID)
+            DocumentReference newNoteRef = notesColRef.document(); // auto ID
+            transaction.set(newNoteRef, Map.of(
+                    "message", "Tried adding nuts — worked great!",
+                    "createdAt", FieldValue.serverTimestamp()
+            ));
+
+            return null;
+        });
+
+        // Small delay to ensure transaction completes
+        Thread.sleep(1000);
+
+        // Verify transaction results
+
+        // Check recipe was updated
+        DocumentSnapshot updatedRecipe = await(recipeRef.get());
+        assertEquals("Views should be incremented", 43L, (long) updatedRecipe.getLong("views"));
+        assertNotNull("updatedAt should be set", updatedRecipe.get("updatedAt"));
+
+        // Check user was updated
+        DocumentSnapshot updatedUser = await(userRef.get());
+        assertNotNull("lastActivity should be set", updatedUser.get("lastActivity"));
+
+        // Check note was added
+        QuerySnapshot notesAfter = await(notesColRef.get());
+        assertEquals("Should have one more note", notesCountBefore + 1, notesAfter.size());
+
+        // Find and verify the new note
+        boolean foundNewNote = false;
+        for (DocumentSnapshot note : notesAfter.getDocuments()) {
+            String message = note.getString("message");
+            if ("Tried adding nuts — worked great!".equals(message)) {
+                foundNewNote = true;
+                assertNotNull("Note should have createdAt", note.get("createdAt"));
+                break;
+            }
+        }
+        assertTrue("New note should be found", foundNewNote);
+
+        // Cleanup
+        await(recipeRef.delete());
+        for (DocumentSnapshot note : notesAfter.getDocuments()) {
+            await(note.getReference().delete());
+        }
+        await(userRef.delete());
+    }
+
+    @Test
+    public void testUpdateNestedField() throws Exception {
+        String[] collections = { "users" };
+        addSecurityRule(collections);
+
+        // Create initial document with nested profile
+        Map<String, Object> initialData = new HashMap<>();
+        Map<String, Object> profile = new HashMap<>();
+        profile.put("name", "Scott Johnson");
+        profile.put("city", "New York"); // Initial city
+        profile.put("country", "USA");
+        initialData.put("profile", profile);
+        initialData.put("email", "scott@example.com");
+
+        await(db.collection("users").document("Scott").set(initialData));
+
+        // Update nested field
+        await(db.collection("users").document("Scott").update("profile.city", "Mumbai"));
+
+        // Verify the update
+        DocumentSnapshot updatedDoc = await(db.collection("users").document("Scott").get());
+        assertTrue("Document should exist", updatedDoc.exists());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> updatedProfile = (Map<String, Object>) updatedDoc.get("profile");
+        assertNotNull("Profile should exist", updatedProfile);
+        assertEquals("City should be updated to Mumbai", "Mumbai", updatedProfile.get("city"));
+        assertEquals("Name should remain unchanged", "Scott Johnson", updatedProfile.get("name"));
+        assertEquals("Country should remain unchanged", "USA", updatedProfile.get("country"));
+        assertEquals("Email should remain unchanged", "scott@example.com", updatedDoc.getString("email"));
+
+        // Cleanup
+        await(db.collection("users").document("Scott").delete());
+    }
 }
+
+

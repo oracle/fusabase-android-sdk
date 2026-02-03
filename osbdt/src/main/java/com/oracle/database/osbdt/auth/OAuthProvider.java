@@ -170,7 +170,7 @@ public class OAuthProvider extends FederatedAuthProvider {
          * @return This builder instance for method chaining.
          */
         public @NonNull OAuthProvider.Builder setScopes(@NonNull List<String> scopes) {
-            throw new UnsupportedOperationException("Custom Parameters are not supported");
+            throw new UnsupportedOperationException("Custom Scopes are not supported");
         }
     }
 

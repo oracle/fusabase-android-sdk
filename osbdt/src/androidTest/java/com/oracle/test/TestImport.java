@@ -1,44 +1,39 @@
 package com.oracle.test;
 
+
+import android.util.Log;
+
+import com.oracle.database.osbdt.auth.OsbdtAuth;
+import com.oracle.database.osbdt.oracledb.DocumentReference;
+import com.oracle.database.osbdt.oracledb.DocumentSnapshot;
+import com.oracle.database.osbdt.oracledb.FieldValue;
 import com.oracle.database.osbdt.oracledb.OsbdtOracledb;
+import com.oracle.database.osbdt.oracledb.Query;
+import com.oracle.database.osbdt.oracledb.QuerySnapshot;
+import com.oracle.database.osbdt.task.Task;
 
-import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+
+import org.junit.Test;
 public class TestImport {
 
 
     @Test
     public void testImport () {
+
+
         OsbdtOracledb db = OsbdtOracledb.getInstance();
 
-        // 1️⃣ Create/Update user document
-        Map<String, Object> user = new HashMap<>();
-        user.put("displayName", "Scott");
-        user.put("photoURL", null); // or user.getPhotoUrl()
+        Map<String, Object> data = new HashMap<>();
+        data.put("name", "John");
+        data.put("createdAt", FieldValue.serverTimestamp());
 
-        db.collection("users").document("Scott")
-                .set(user);
-
-        // 2️⃣ Create recipe subcollection document
-        Map<String, Object> recipe = new HashMap<>();
-        recipe.put("uuid", "Scott");
-        recipe.put("title", "Chocolate Chip Cookies");
-        recipe.put("ingredients", "2 cups flour,1 cup sugar,1/2 cup chocolate chips");
-        recipe.put("steps", Arrays.asList("Mix ingredients", "Bake for 15 min"));
-        recipe.put("category", "Dessert");
-        recipe.put("difficulty", "Easy");
-        recipe.put("tags", Arrays.asList("sweet", "baking"));
-        recipe.put("avgRating", 0);
-        recipe.put("photoRefs", new ArrayList<>());
-
-        db.collection("users").document("Scott")
-                .collection("recipes").document("Cookies")
-                .set(recipe);
+// Set document with server timestamp
+        db.collection("users").document("Scott").set(data);
     }
+
 
 }
