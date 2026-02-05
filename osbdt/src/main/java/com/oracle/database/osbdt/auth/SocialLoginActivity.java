@@ -176,10 +176,17 @@ public class SocialLoginActivity extends AppCompatActivity {
             OsbdtLogger.d("SocialAuth", "Unable to store auth Initialization data in the preferences");
         }
 
-        String updatedAuthUrl = Utils.addQueryParameterToURL(provider.getAuthUrl(),
-                "code_challenge", codeChallenge,
-                          "code_challenge_method", codeChallengeMethod,
-                          "link", String.valueOf(link ? 1 : 0));
+        String updatedAuthUrl;
+        if (app.osbdtOptions.getAuthType().equals("idcs")) {
+            updatedAuthUrl = Utils.addQueryParameterToURL(provider.getAuthUrl(),
+                    "code_challenge", codeChallenge,
+                    "code_challenge_method", codeChallengeMethod);
+        } else {
+            updatedAuthUrl = Utils.addQueryParameterToURL(provider.getAuthUrl(),
+                    "code_challenge", codeChallenge,
+                    "code_challenge_method", codeChallengeMethod,
+                    "link", String.valueOf(link ? 1 : 0));
+        }
 
         openCustomTab(activity, updatedAuthUrl);
         return taskSource.getTask();

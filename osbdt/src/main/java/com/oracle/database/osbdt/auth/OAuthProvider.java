@@ -53,10 +53,6 @@ import java.util.Map;
  */
 public class OAuthProvider extends FederatedAuthProvider {
 
-    /** List of OAuth scopes requested during authentication. */
-    private final List<String> scopes;
-    /** Custom parameters to be included in the authentication request. */
-    private final Map<String, String> customParameters;
     /** The unique identifier for this authentication provider. */
     private final String providerId;
     /** The complete authentication URL for OAuth login flow. */
@@ -69,8 +65,6 @@ public class OAuthProvider extends FederatedAuthProvider {
      */
     private OAuthProvider (@NonNull Builder builder) {
         this.providerId = builder.providerId;
-        this.customParameters = builder.customParameters;
-        this.scopes = builder.scopes;
         OsbdtAuth auth = OsbdtAuth.getInstance();
         this.authUrl = Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
                         UNDERSCORE_PATH,
@@ -97,8 +91,6 @@ public class OAuthProvider extends FederatedAuthProvider {
      */
     private OAuthProvider () {
         this.providerId = null;
-        this.scopes = null;
-        this.customParameters = null;
         this.authUrl = "";
     }
 
@@ -254,7 +246,7 @@ public class OAuthProvider extends FederatedAuthProvider {
      * @throws IllegalArgumentException If the providerId is null or empty.
      */
     public static @NonNull OAuthProvider.Builder newBuilder(@NonNull String providerId,
-                                              @NonNull OsbdtAuth osbdtAuth) throws IllegalArgumentException{
+                                                            @NonNull OsbdtAuth osbdtAuth) throws IllegalArgumentException{
         if (providerId.isEmpty())
         {
             throw new IllegalArgumentException("Empty providerId received. Kindly provide a valid providerId");

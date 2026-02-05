@@ -26,6 +26,18 @@
 
 package com.oracle.database.osbdt.auth;
 
+import static com.oracle.database.osbdt.auth.AuthProvider.API_KEY;
+import static com.oracle.database.osbdt.auth.AuthProvider.BAAS_SERVICES;
+import static com.oracle.database.osbdt.auth.AuthProvider.DEVICE;
+import static com.oracle.database.osbdt.auth.AuthProvider.IDCS_PATH;
+import static com.oracle.database.osbdt.auth.AuthProvider.IDM_PATH;
+import static com.oracle.database.osbdt.auth.AuthProvider.METHOD;
+import static com.oracle.database.osbdt.auth.AuthProvider.MOBILE;
+import static com.oracle.database.osbdt.auth.AuthProvider.ONPREM_PATH;
+import static com.oracle.database.osbdt.auth.AuthProvider.SOCIAL;
+import static com.oracle.database.osbdt.auth.AuthProvider.SOCIAL_IDP;
+import static com.oracle.database.osbdt.auth.AuthProvider.UNDERSCORE_PATH;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -37,7 +49,7 @@ import com.oracle.database.osbdt.utils.Utils;
  * This class extends the AuthProvider abstract class and provides additional functionality for handling Facebook authentication.
  * </p>
  */
-public class FacebookAuthProvider extends AuthProvider {
+public class FacebookAuthProvider extends FederatedAuthProvider {
 
     /**
      * The provider ID for Facebook authentication.
@@ -56,7 +68,7 @@ public class FacebookAuthProvider extends AuthProvider {
      * @param auth {@code OsbdtAuth} instance
      */
     public FacebookAuthProvider(@NonNull OsbdtAuth auth) {
-        super(PROVIDER_ID, FACEBOOK_SIGN_IN_METHOD);
+        super();
         if(auth.getConfig().authType.equals("idcs")) {
             this.AUTH_URL = Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
                             UNDERSCORE_PATH,
@@ -65,12 +77,21 @@ public class FacebookAuthProvider extends AuthProvider {
                             IDCS_PATH,
                             auth.getConfig().projectId,
                             SOCIAL),
-                    METHOD, FACEBOOK + '-' + IDCS_PATH,
                     DEVICE, MOBILE,
                     API_KEY, auth.getConfig().appId
             );
         } else
-            AUTH_URL = null;
+            AUTH_URL = Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
+                            Config.UNDERSCORE_PATH,
+                            BAAS_SERVICES,
+                            Config.IDM_PATH,
+                            ONPREM_PATH,
+                            auth.getConfig().projectId,
+                            SOCIAL_IDP),
+                    METHOD, PROVIDER_ID,
+                    DEVICE, MOBILE,
+                    API_KEY, auth.getConfig().appId
+            );;
     }
 
      /**
@@ -82,6 +103,12 @@ public class FacebookAuthProvider extends AuthProvider {
         return this.AUTH_URL;
     }
 
+    @NonNull
+    @Override
+    String getProviderId() {
+        return PROVIDER_ID;
+    }
+
     /**
      * Helps in creating an AuthCredential from the Facebook access token.
      *
@@ -91,7 +118,6 @@ public class FacebookAuthProvider extends AuthProvider {
     @NonNull
     public static AuthCredential getCredential(@NonNull String accessToken)
        throws IllegalArgumentException{
-
             if(accessToken == null)
                 throw new IllegalArgumentException("AccessToken must be non null.");
         return new FacebookAuthCredential(PROVIDER_ID, FACEBOOK_SIGN_IN_METHOD, accessToken);

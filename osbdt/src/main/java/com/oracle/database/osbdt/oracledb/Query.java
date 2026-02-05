@@ -592,6 +592,7 @@ public class Query extends Reference {
                 }
             }
         } else if (this.isColGroup) {
+                payloadBuilder.add("path", Json.createArrayBuilder().build());
                 payloadBuilder.add("col_group", this.path.get(0));
         } else {
             if (this.path != null) {
@@ -629,8 +630,15 @@ public class Query extends Reference {
                     .forEach(aggregateBuilder::add);
         }
         payloadBuilder.add("aggregate", aggregateBuilder.build())
-                .add("col_group", "")
                 .add("options", Json.createObjectBuilder().build());
+
+        JsonArrayBuilder columnsBuilder = Json.createArrayBuilder();
+        if (this.columns != null && !this.columns.isEmpty()) {
+            this.columns.stream()
+                    .filter(Objects::nonNull)
+                    .forEach(columnsBuilder::add);
+        }
+        payloadBuilder.add("column", columnsBuilder.build());
 
         if(snapshot)
                 payloadBuilder.add("snapshot", 1);

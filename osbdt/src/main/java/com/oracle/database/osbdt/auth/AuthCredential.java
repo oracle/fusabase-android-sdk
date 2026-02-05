@@ -34,7 +34,7 @@ import androidx.annotation.NonNull;
  * Abstract Class Auth Credential
  * Represents an auth credential
  */
-public abstract class AuthCredential implements Parcelable {
+public abstract class AuthCredential {
 
     /**
      * Method to get the provider name

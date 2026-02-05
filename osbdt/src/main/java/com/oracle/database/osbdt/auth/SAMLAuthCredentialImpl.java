@@ -35,21 +35,6 @@ import java.util.Objects;
 
 class SAMLAuthCredentialImpl extends OAuthCredential {
 
-    /**
-     * Creator for creating GithubAuthCredential objects from parcels.
-     */
-    public static final Creator<OAuthCredential> CREATOR = new Creator<OAuthCredential>() {
-        @Override
-        public OAuthCredential createFromParcel(Parcel in) {
-            return new SAMLAuthCredentialImpl(in);
-        }
-
-        @Override
-        public OAuthCredential[] newArray(int size) {
-            return new OAuthCredential[size];
-        }
-    };
-
     private final String providerId;
     private final String accessToken;
     private final String idToken;
@@ -107,16 +92,6 @@ class SAMLAuthCredentialImpl extends OAuthCredential {
     @Override
     public String getSignInMethod() {
         return this.providerId;
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(@NonNull Parcel parcel, int i) {
-        return;
     }
 
 }

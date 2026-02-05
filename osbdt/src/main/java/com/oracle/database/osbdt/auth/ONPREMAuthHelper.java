@@ -31,6 +31,7 @@ import static com.oracle.database.osbdt.task.Tasks.await;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.oracle.database.osbdt.OsbdtException;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
@@ -61,6 +62,11 @@ class ONPREMAuthHelper extends AuthHelper {
     ONPREMAuthHelper(@NonNull ONPREMConfig config, @NonNull OsbdtAuth auth) {
         this.config = config;
         this.auth = auth;
+    }
+
+    @Nullable
+    protected JsonObject getOsbdtToken(@NonNull JsonObject authCredential, @NonNull JsonObject profileCredential) throws OsbdtException {
+        return null; // On-prem doesn't need token exchange
     }
 
     @NonNull

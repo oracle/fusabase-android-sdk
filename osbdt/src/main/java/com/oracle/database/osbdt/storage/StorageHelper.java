@@ -39,6 +39,7 @@ import com.oracle.database.osbdt.http.HttpRequestHelper;
 import com.oracle.database.osbdt.http.HttpResponse;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 import com.oracle.database.osbdt.task.Task;
+import com.oracle.database.osbdt.task.OnCompleteListener;
 import com.oracle.database.osbdt.task.Tasks;
 import com.oracle.database.osbdt.utils.Utils;
 

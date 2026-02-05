@@ -26,11 +26,7 @@
 
 package com.oracle.database.osbdt.auth;
 
-import android.os.Parcel;
-
 import androidx.annotation.*;
-
-import java.util.Objects;
 
 /**
  * Represents a Facebook authentication credential.
@@ -50,21 +46,6 @@ public class FacebookAuthCredential extends AuthCredential {
     private final String idToken;
 
     /**
-     * Creator for creating FacebookAuthCredential objects from parcels.
-     */
-    public static final Creator<FacebookAuthCredential> CREATOR = new Creator<FacebookAuthCredential>() {
-        @Override
-        public FacebookAuthCredential createFromParcel(Parcel in) {
-            return new FacebookAuthCredential(in);
-        }
-
-        @Override
-        public FacebookAuthCredential[] newArray(int size) {
-            return new FacebookAuthCredential[size];
-        }
-    };
-
-    /**
      * Constructs a new FacebookAuthCredential object.
      *
      * @param provider The provider associated with this credential.
@@ -78,18 +59,6 @@ public class FacebookAuthCredential extends AuthCredential {
         this.signInMethod = signInMethod;
         this.accessToken = accessToken;
         this.idToken = "";
-    }
-
-    /**
-     * Constructs a new FacebookAuthCredential object from a parcel.
-     *
-     * @param in The parcel containing the data.
-     */
-    protected FacebookAuthCredential(Parcel in) {
-        this.provider = Objects.requireNonNull(in.readString());
-        this.signInMethod = Objects.requireNonNull(in.readString());
-        this.accessToken = null;
-        this.idToken = null;
     }
 
     /**
@@ -116,26 +85,4 @@ public class FacebookAuthCredential extends AuthCredential {
         return this.accessToken;
     }
 
-    /**
-     * Describes the contents of this parcelable object.
-     *
-     * @return A bitmask indicating the set of special object types held by the Parcelable object.
-     */
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    /**
-     * Writes this object to a parcel.
-     *
-     * @param parcel The parcel to write to.
-     * @param flags Additional flags about how the object should be written.
-     */
-    @Override
-    public void writeToParcel(@NonNull Parcel parcel, int flags) {
-        parcel.writeString(provider);
-        parcel.writeString(signInMethod);
-        // Don't write access token into parcel
-    }
 }

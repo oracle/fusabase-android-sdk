@@ -54,7 +54,6 @@ import com.oracle.database.osbdt.utils.Utils;
 import java.io.StringReader;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -191,7 +190,7 @@ class IDCSAuthHelper extends AuthHelper {
         try {
             JsonObject userDetails = this.getUserDetails(
                     new GetTokenResult(
-                            new IdToken(res.getString("access_token"), "password")));
+                            new IdToken(res.getString("idcs_access_token"), "password")));
             return Json.createObjectBuilder()
                     .add("userEmail", email)
                     .add("userDetails", userDetails)
@@ -234,8 +233,8 @@ class IDCSAuthHelper extends AuthHelper {
                         IDCSConfig.TOKEN_EXCHANGE_PATH),
                 "POST",
                 headers,
-                queryParameters);
-
+                queryParameters,
+                payload.toString());
 
         HttpResponse response = null;
 
@@ -249,9 +248,10 @@ class IDCSAuthHelper extends AuthHelper {
 
                 return Json.createObjectBuilder()
                         .add("access_token", result.getString("access_token"))
-                        .add("refresh_token", "")
-                        .add("authn_token", authCredential.getString("authnToken"))
-                        .add("authn_refresh_token", authCredential.getString("refresh_token"))
+                        .add("refresh_token", result.getString("refresh_token", ""))
+                        .add("authn_token", authCredential.containsKey("authnToken") ? authCredential.getString("authnToken") :
+                                authCredential.getString("authn_token", ""))
+                        .add("authn_refresh_token", authCredential.getString("refresh_token", ""))
                         .add("idcs_access_token", profileCredential.getString("access_token"))
                         .add("idcs_refresh_token", profileCredential.getString("refresh_token"))
                         .build();
@@ -361,7 +361,7 @@ class IDCSAuthHelper extends AuthHelper {
 
         String payload = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&scope="
             + scope
-            + "offline_access&assertion=" + authnToken.getToken();
+            + "+offline_access&assertion=" + authnToken.getToken();
 
         HttpRequestHelper requestHelper = new HttpRequestHelper();
         Map<String, String> headers = new HashMap<>();
@@ -521,7 +521,8 @@ class IDCSAuthHelper extends AuthHelper {
             reader.close();
 
             JsonObjectBuilder updatedResultBuilder = Json.createObjectBuilder(result);
-            updatedResultBuilder.add("email_verified", tokenData.get("email_verified"))
+            updatedResultBuilder.add("email", result.getJsonArray("emails").getJsonObject(0).getString("value"))
+                    .add("email_verified", tokenData.get("email_verified"))
                     .add("idp_name", tokenData.getString("idp_name"))
                     .add("idp_type", tokenData.getString("idp_type"));
 
@@ -648,8 +649,14 @@ class IDCSAuthHelper extends AuthHelper {
             OsbdtLogger.i(TAG, "Signed out user from idcs successfully.");
             try {
                 JsonObject data = this.auth.getCurrentUser().loadUserData();
-                this.revokeRefreshToken(data.getString("refreshToken"));
-                this.revokeRefreshToken(data.getString("idcsRefreshToken"));
+                String osbdtRefreshToken = data.getString("refreshToken", "");
+                String idcsRefreshToken = data.getString("idcsRefreshToken", "");
+                if (osbdtRefreshToken != null && !osbdtRefreshToken.isEmpty()) {
+                    this.revokeRefreshToken(osbdtRefreshToken);
+                }
+                if (idcsRefreshToken != null && !idcsRefreshToken.isEmpty()) {
+                    this.revokeRefreshToken(idcsRefreshToken);
+                }
             } catch (OsbdtException e) {
                 OsbdtLogger.e(TAG, "Cannot load user data for revoke: " + e.getMessage());
             }

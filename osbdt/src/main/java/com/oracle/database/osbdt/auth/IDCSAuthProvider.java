@@ -26,7 +26,7 @@
 
 package com.oracle.database.osbdt.auth;
 
-import static com.oracle.database.osbdt.auth.AuthProvider.APP_ID;
+import static com.oracle.database.osbdt.auth.AuthProvider.API_KEY;
 import static com.oracle.database.osbdt.auth.AuthProvider.BAAS_SERVICES;
 import static com.oracle.database.osbdt.auth.AuthProvider.DEVICE;
 import static com.oracle.database.osbdt.auth.AuthProvider.IDCS_PATH;
@@ -91,7 +91,7 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
                         auth.getConfig().projectId,
                         SOCIAL_IDP),
                 DEVICE, MOBILE,
-                APP_ID, auth.getConfig().appId
+                API_KEY, auth.getConfig().appId
         );
     }
 
@@ -151,8 +151,7 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
          * @return This builder instance for method chaining.
          */
         public @NonNull IDCSAuthProvider.Builder addCustomParameter(@NonNull String paramKey, @NonNull String paramValue) {
-            this.customParameters.put(paramKey, paramValue);
-            return this;
+            throw new UnsupportedOperationException("Custom Parameters are not supported");
         }
 
         /**
@@ -162,8 +161,7 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
          * @return This builder instance for method chaining.
          */
         public @NonNull IDCSAuthProvider.Builder addCustomParameters(@NonNull Map<String, String> customParameters) {
-            this.customParameters = customParameters;
-            return this;
+            throw new UnsupportedOperationException("Custom Parameters are not supported");
         }
 
         /**
@@ -182,8 +180,7 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
          * @return This builder instance for method chaining.
          */
         public @NonNull IDCSAuthProvider.Builder setScopes(@NonNull List<String> scopes) {
-            this.scopes = scopes;
-            return this;
+            throw new UnsupportedOperationException("Custom Scopes are not supported");
         }
     }
 

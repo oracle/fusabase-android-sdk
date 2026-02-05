@@ -48,21 +48,6 @@ public class EmailAuthCredential extends AuthCredential{
     @Nullable
     private final String password;
 
-    /**
-     * Creator for creating EmailAuthCredential objects from parcels.
-     */
-    public static final Creator<EmailAuthCredential> CREATOR = new Creator<EmailAuthCredential>() {
-        @Override
-        public EmailAuthCredential createFromParcel(Parcel in) {
-            return new EmailAuthCredential(in);
-        }
-
-        @Override
-        public EmailAuthCredential[] newArray(int size) {
-            return new EmailAuthCredential[size];
-        }
-    };
-
      /**
      * Constructs a new EmailAuthCredential object.
      *
@@ -79,18 +64,6 @@ public class EmailAuthCredential extends AuthCredential{
             this.signInMethod = signInMethod;
             this.email = email;
             this.password = password;
-    }
-
-    /**
-     * Constructs a new EmailAuthCredential object from a parcel.
-     *
-     * @param in The parcel containing the data.
-     */
-    protected EmailAuthCredential(Parcel in) {
-        this.provider = Objects.requireNonNull(in.readString());
-        this.signInMethod = Objects.requireNonNull(in.readString());
-        this.email = Objects.requireNonNull(in.readString());
-        this.password = null;
     }
 
     /**
@@ -118,7 +91,7 @@ public class EmailAuthCredential extends AuthCredential{
      * @return {@code String}
      */
     @NonNull
-    public String getEmail() {
+    protected String getEmail() {
         return this.email;
     }
 
@@ -127,7 +100,7 @@ public class EmailAuthCredential extends AuthCredential{
      * @return {@code String}
      */
     @Nullable
-    public String getPassword() {
+    protected String getPassword() {
         return this.password;
     }
 
@@ -137,26 +110,4 @@ public class EmailAuthCredential extends AuthCredential{
         return "";
     }
 
-    /**
-     * Describes the contents of this parcelable object.
-     *
-     * @return A bitmask indicating the set of special object types held by the Parcelable object.
-     */
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    /**
-     * Writes this object to a parcel.
-     *
-     * @param parcel The parcel to write to.
-     * @param flags Additional flags about how the object should be written.
-     */
-    @Override
-    public void writeToParcel(@NonNull Parcel parcel, int flags) {
-        parcel.writeString(provider);
-        parcel.writeString(signInMethod);
-        parcel.writeString(email);
-    }
 }

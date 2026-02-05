@@ -125,6 +125,7 @@ public class HttpRequestHelper {
     private final OkHttpClient httpClient;
     private Request request = null;
     private int retries;
+    private String requestBodyForLogging = null;
 
     public HttpRequestHelper() {
         this(1);
@@ -329,6 +330,12 @@ public class HttpRequestHelper {
                                         : "application/json; charset=utf-8"
                                 )) :
                         RequestBody.create(null, new byte[0]);
+                // Store body for logging if it's a string
+                if (body instanceof String) {
+                    this.requestBodyForLogging = (String) body;
+                } else {
+                    this.requestBodyForLogging = null;
+                }
                 if ("POST".equalsIgnoreCase(method)) {
                     requestBuilder.post(requestBody);
                 } else if("PUT".equalsIgnoreCase(method)) {
@@ -348,6 +355,39 @@ public class HttpRequestHelper {
         return requestBuilder.build();
     }
 
+    /**
+     * Logs all details of the HTTP request for debugging purposes.
+     */
+    private void logHttpRequest() {
+        if (request == null) return;
+
+        StringBuilder logMessage = new StringBuilder();
+        logMessage.append("HTTP Request Details:\n");
+        logMessage.append("Method: ").append(request.method()).append("\n");
+        logMessage.append("URL: ").append(request.url().toString()).append("\n");
+
+        // Log headers
+        if (request.headers().size() > 0) {
+            logMessage.append("Headers:\n");
+            for (String name : request.headers().names()) {
+                logMessage.append("  ").append(name).append(": ").append(request.headers().get(name)).append("\n");
+            }
+        } else {
+            logMessage.append("Headers: None\n");
+        }
+
+        // Log body if available
+        if (requestBodyForLogging != null && !requestBodyForLogging.isEmpty()) {
+            logMessage.append("Body: ").append(requestBodyForLogging);
+        } else if (request.body() != null) {
+            logMessage.append("Body: Present (binary or custom RequestBody)");
+        } else {
+            logMessage.append("Body: None");
+        }
+
+        OsbdtLogger.d(TAG, logMessage.toString());
+    }
+
     public HttpResponse executeRequest() throws OsbdtException {
         try {
 
@@ -355,6 +395,9 @@ public class HttpRequestHelper {
                 throw new OsbdtException("Request is not initialized." +
                         " Kindly create a request first using buildRequest().");
             }
+
+            // Log HTTP request details
+            logHttpRequest();
 
             Response response = this.httpClient.newCall(this.request).execute();
 
@@ -401,6 +444,9 @@ public class HttpRequestHelper {
                 throw new OsbdtException("Request is not initialized." +
                         " Kindly create a request first using buildRequest().");
             }
+
+            // Log HTTP request details
+            logHttpRequest();
 
             Response response = this.httpClient.newCall(this.request).execute();
 
