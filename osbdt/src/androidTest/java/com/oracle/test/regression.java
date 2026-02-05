@@ -39,7 +39,6 @@ import com.oracle.database.osbdt.auth.UserProfileChangeRequest;
 import com.oracle.database.osbdt.auth.*;
 import com.oracle.database.osbdt.OsbdtApp;
 import com.oracle.database.osbdt.OsbdtOptions;
-import com.oracle.database.osbdt.models.IDCSOptions;
 import com.oracle.database.osbdt.oracledb.*;
 import com.oracle.database.osbdt.storage.*;
 import com.oracle.database.osbdt.task.Task;
