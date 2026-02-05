@@ -411,16 +411,57 @@ class WebSocketController {
     }
 
     private JsonObject getIDCSSnapshotToken() throws OsbdtOracledbException {
+        HttpRequestHelper requestHelper = new HttpRequestHelper(oracledb.getOracledbSettings().getMaxAttempt());
+
+        // Populate headers
+        Map<String, String> headers = new HashMap<>();
+
         String authHeader = this.buildAuthorizationHeader();
         if (authHeader.isEmpty()) {
             throw new OsbdtOracledbException("User Not logged in", OsbdtOracledbException.Code.UNAUTHENTICATED);
         }
 
-        // Extract token from "Bearer <token>" format
-        String accessToken = authHeader.substring(7); // Remove "Bearer " prefix
-        return Json.createObjectBuilder()
-            .add("access_token", accessToken)
-            .build();
+        headers.put("Authorization", authHeader);
+
+        Map<String, String> queryParameters = new HashMap<>();
+        queryParameters.put("apiKey", this.oracledb.getOracledbSettings().getOptions().getAppId());
+
+        try {
+            // Create the request
+            requestHelper.createHttpRequest(Utils.urlBuilder(this.oracledb.getOracledbSettings().getOptions().getOrdsHost(),
+                    QueryHelper.BAAS_SERVICE,
+                    QueryHelper.IDM,
+                    QueryHelper.ONPREM,
+                    this.oracledb.getOracledbSettings().getOptions().getProjectId(),
+                    QueryHelper.AUTHORIZE_SNAPSHOT),
+                "GET",
+                headers,
+                queryParameters);
+        } catch (OsbdtException e) {
+            throw new OsbdtOracledbException(e.getMessage(), OsbdtOracledbException.Code.INTERNAL);
+        }
+
+        HttpResponse response;
+
+        try {
+            response = requestHelper.executeRequest();
+        } catch (OsbdtException e) {
+            throw new OsbdtOracledbException(e.getMessage(), OsbdtOracledbException.Code.NETWORK_ERROR, e);
+        }
+
+        JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
+        JsonObject result = reader.readObject();
+
+        if (response.getStatus())
+            OsbdtLogger.i("OsbdtOradb", "authorizeSnapshot for IDCS");
+        else {
+            OsbdtLogger.w("OsbdtOradb", "authorizeSnapshot for IDCS failed with response message " + response.getError());
+            throw new OsbdtOracledbException("Authorize Snapshot failed with following message " + response.getError(),
+                OsbdtOracledbException.Code.fromCode(response.getCode()));
+        }
+
+        reader.close();
+        return result;
     }
 
     /**

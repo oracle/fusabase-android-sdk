@@ -48,6 +48,7 @@ import java.util.concurrent.CompletionException;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonValue;
 
 abstract class AuthHelper {
@@ -99,6 +100,10 @@ abstract class AuthHelper {
 
     @NonNull
     abstract protected JsonObject getUserDetails(@NonNull GetTokenResult accessToken)
+            throws OsbdtException;
+
+    @Nullable
+    abstract protected JsonObject getOsbdtToken(@NonNull JsonObject authCredential, @NonNull JsonObject profileCredential)
             throws OsbdtException;
 
     @NonNull
@@ -215,6 +220,7 @@ abstract class AuthHelper {
             }
         }
 
+        boolean isIdcs = authHelper.getConfig().getAuthType().equals("idcs");
         String callbackScheme = "baasmobile" + authHelper.getConfig().getAppId().toLowerCase();
 
         if (data.toString().startsWith(callbackScheme)) {
@@ -226,31 +232,53 @@ abstract class AuthHelper {
 
             JsonObject responseObject;
             JsonObject userDetails;
+            JsonObject tokensForUser;
             JsonObject credentialResponse = Json.createObjectBuilder().build();
             try {
                 responseObject = authHelper.performCodeExchange(authCode, codeVerifier);
-                if(link)
-                {
+
+                tokensForUser = responseObject;
+
+                if (isIdcs) {
+                    // Exchange IDCS tokens for OSBDT tokens (same as createUserWithEmailAndPassword)
+                    tokensForUser = authHelper.getOsbdtToken(responseObject, responseObject);
+                    // Link not supported for IDCS
+                } else if (link) {
                     AuthCredential authCredential = getAuthCredential(providerId, responseObject);
-                    responseObject = authHelper.signInWithCredentialHelper(authCredential, link);
+                    tokensForUser = authHelper.signInWithCredentialHelper(authCredential, link);
                 }
 
                 userDetails = authHelper.getUserDetails(
                         new GetTokenResult(
                                 new IdToken(
-                                        responseObject.getString("access_token"), "base")));
+                                        isIdcs ? responseObject.getString("access_token") : tokensForUser.getString("access_token"),
+                                        "password")));
             } catch (OsbdtException e) {
                 OsbdtLogger.e("Cannot perform code exchange or error parsing the token."+ e.getMessage());
                 throw new CompletionException(e);
             }
 
-            final JsonObject userData = Json.createObjectBuilder()
+            JsonObjectBuilder userDataBuilder = Json.createObjectBuilder()
                     .add("userEmail", userDetails.getString("email"))
-                    .add("userDetails", userDetails)
+                    .add("userDetails", userDetails);
+
+            if (isIdcs) {
+                userDataBuilder
+                    .add("authnToken", tokensForUser.getString("authn_token"))
+                    .add("accessToken", tokensForUser.getString("access_token"))
+                    .add("refreshToken", tokensForUser.getString("refresh_token"))
+                    .add("authnRefreshToken", tokensForUser.getString("authn_refresh_token"))
+                    .add("idcsAccessToken", responseObject.getString("access_token"))
+                    .add("idcsRefreshToken", responseObject.getString("refresh_token"))
+                    .add("idcsAuthnToken", responseObject.getString("id_token"));
+            } else {
+                userDataBuilder
                     .add("authnToken", JsonValue.NULL)
-                    .add("accessToken", responseObject.getString("access_token"))
-                    .add("refreshToken", responseObject.getString("refresh_token"))
-                    .build();
+                    .add("accessToken", tokensForUser.getString("access_token"))
+                    .add("refreshToken", tokensForUser.getString("refresh_token"));
+            }
+
+            final JsonObject userData = userDataBuilder.build();
 
             String finalProviderId = providerId;
 
@@ -319,14 +347,6 @@ abstract class AuthHelper {
                 return responseObject.getString("id_token");
             }
 
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-
-            @Override
-            public void writeToParcel(@NonNull Parcel parcel, int i) {
-            }
         };
         return authCredential;
     }

@@ -39,21 +39,6 @@ import java.util.Objects;
 
 class OAuthCredentialImpl extends OAuthCredential {
 
-    /**
-     * Creator for creating GithubAuthCredential objects from parcels.
-     */
-    public static final Creator<OAuthCredential> CREATOR = new Creator<OAuthCredential>() {
-        @Override
-        public OAuthCredential createFromParcel(Parcel in) {
-            return new OAuthCredentialImpl(in);
-        }
-
-        @Override
-        public OAuthCredential[] newArray(int size) {
-            return new OAuthCredential[size];
-        }
-    };
-
     private final String providerId;
     private final SecureString secureAccessToken;
     private final SecureString secureIdToken;
@@ -75,18 +60,6 @@ class OAuthCredentialImpl extends OAuthCredential {
         } catch (GeneralSecurityException ex) {
             return null;
         }
-    }
-
-    /**
-     * Constructs a new GithubAuthCredential object from a parcel.
-     *
-     * @param in The parcel containing the data.
-     */
-    protected OAuthCredentialImpl(Parcel in) {
-        this.providerId = Objects.requireNonNull(in.readString());
-        this.secureAccessToken = null;
-        this.secureIdToken = null;
-        this.nonce = null;
     }
 
     @Nullable
@@ -121,13 +94,4 @@ class OAuthCredentialImpl extends OAuthCredential {
         return this.providerId;
     }
 
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(@NonNull Parcel parcel, int i) {
-        return;
-    }
 }

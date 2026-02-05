@@ -632,6 +632,14 @@ public class Query extends Reference {
         payloadBuilder.add("aggregate", aggregateBuilder.build())
                 .add("options", Json.createObjectBuilder().build());
 
+        JsonArrayBuilder columnsBuilder = Json.createArrayBuilder();
+        if (this.columns != null && !this.columns.isEmpty()) {
+            this.columns.stream()
+                    .filter(Objects::nonNull)
+                    .forEach(columnsBuilder::add);
+        }
+        payloadBuilder.add("column", columnsBuilder.build());
+
         if(snapshot)
                 payloadBuilder.add("snapshot", 1);
 

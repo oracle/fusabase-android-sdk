@@ -47,21 +47,6 @@ public class IDCSAuthCredential extends AuthCredential{
     private final String accessToken;
 
     /**
-     * Creator for creating IDCSAuthCredential objects from parcels.
-     */
-    public static final Creator<IDCSAuthCredential> CREATOR = new Creator<IDCSAuthCredential>() {
-        @Override
-        public IDCSAuthCredential createFromParcel(Parcel in) {
-            return new IDCSAuthCredential(in);
-        }
-
-        @Override
-        public IDCSAuthCredential[] newArray(int size) {
-            return new IDCSAuthCredential[size];
-        }
-    };
-
-    /**
      * Constructs a new IDCSAuthCredential object.
      *
      * @param provider The provider associated with this credential.
@@ -74,17 +59,6 @@ public class IDCSAuthCredential extends AuthCredential{
         this.provider = provider;
         this.signInMethod = signInMethod;
         this.accessToken = accessToken;
-    }
-
-    /**
-     * Constructs a new IDCSAuthCredential object from a parcel.
-     *
-     * @param in The parcel containing the data.
-     */
-    protected IDCSAuthCredential(Parcel in) {
-        this.provider = Objects.requireNonNull(in.readString());
-        this.signInMethod = Objects.requireNonNull(in.readString());
-        this.accessToken = null;
     }
 
     /**
@@ -111,25 +85,4 @@ public class IDCSAuthCredential extends AuthCredential{
         return this.accessToken;
     }
 
-    /**
-     * Describes the contents of this parcelable object.
-     *
-     * @return A bitmask indicating the set of special object types held by the Parcelable object.
-     */
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    /**
-     * Writes this object to a parcel.
-     *
-     * @param parcel The parcel to write to.
-     * @param flags Additional flags about how the object should be written.
-     */
-    @Override
-    public void writeToParcel(@NonNull Parcel parcel, int flags) {
-        parcel.writeString(provider);
-        parcel.writeString(signInMethod);
-        // Don't write access token into parcel
-    }}
+}

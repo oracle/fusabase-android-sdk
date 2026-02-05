@@ -26,7 +26,7 @@
 
 package com.oracle.database.osbdt.auth;
 
-import static com.oracle.database.osbdt.auth.AuthProvider.APP_ID;
+import static com.oracle.database.osbdt.auth.AuthProvider.API_KEY;
 import static com.oracle.database.osbdt.auth.AuthProvider.BAAS_SERVICES;
 import static com.oracle.database.osbdt.auth.AuthProvider.DEVICE;
 import static com.oracle.database.osbdt.auth.AuthProvider.IDCS_PATH;
@@ -91,7 +91,7 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
                         auth.getConfig().projectId,
                         SOCIAL_IDP),
                 DEVICE, MOBILE,
-                APP_ID, auth.getConfig().appId
+                API_KEY, auth.getConfig().appId
         );
     }
 

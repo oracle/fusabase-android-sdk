@@ -27,7 +27,6 @@
 package com.oracle.database.osbdt.auth;
 
 import static com.oracle.database.osbdt.auth.AuthProvider.API_KEY;
-import static com.oracle.database.osbdt.auth.AuthProvider.APP_ID;
 import static com.oracle.database.osbdt.auth.AuthProvider.BAAS_SERVICES;
 import static com.oracle.database.osbdt.auth.AuthProvider.DEVICE;
 import static com.oracle.database.osbdt.auth.AuthProvider.METHOD;
@@ -55,11 +54,6 @@ import java.util.Map;
  */
 public class SAMLAuthProvider extends FederatedAuthProvider{
 
-    /** List of scopes requested during SAML authentication. */
-    private final List<String> scopes;
-    /** Custom parameters to be included in the SAML authentication request. */
-    private final Map<String, String> customParameters;
-    /** The unique identifier for this SAML authentication provider. */
     private final String providerId;
     /** The complete authentication URL for SAML login flow. */
     private final String authUrl;
@@ -71,8 +65,6 @@ public class SAMLAuthProvider extends FederatedAuthProvider{
      */
     private SAMLAuthProvider (@NonNull Builder builder) {
         this.providerId = builder.providerId;
-        this.customParameters = builder.customParameters;
-        this.scopes = builder.scopes;
         OsbdtAuth auth = OsbdtAuth.getInstance();
         this.authUrl = Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
                         UNDERSCORE_PATH,
@@ -83,7 +75,7 @@ public class SAMLAuthProvider extends FederatedAuthProvider{
                         SOCIAL_IDP),
                 METHOD, providerId,
                 DEVICE, MOBILE,
-                APP_ID, auth.getConfig().appId
+                API_KEY, auth.getConfig().appId
         );
     }
 
@@ -99,8 +91,6 @@ public class SAMLAuthProvider extends FederatedAuthProvider{
      */
     private SAMLAuthProvider () {
         this.providerId = null;
-        this.scopes = null;
-        this.customParameters = null;
         this.authUrl = "";
     }
 

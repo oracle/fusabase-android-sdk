@@ -38,28 +38,13 @@ import java.util.Objects;
  * This class extends the AuthCredential abstract class and provides additional functionality for handling Google authentication.
  *</p>
  */
-public class GoogleAuthCredential extends AuthCredential{
+public class GoogleAuthCredential extends AuthCredential {
     @NonNull
     private final String provider;
     @NonNull
     private final String signInMethod;
     @NonNull
     private final String accessToken;
-
-    /**
-     * Creator for creating GoogleAuthCredential objects from parcels.
-     */
-    public static final Creator<GoogleAuthCredential> CREATOR = new Creator<GoogleAuthCredential>() {
-        @Override
-        public GoogleAuthCredential createFromParcel(Parcel in) {
-            return new GoogleAuthCredential(in);
-        }
-
-        @Override
-        public GoogleAuthCredential[] newArray(int size) {
-            return new GoogleAuthCredential[size];
-        }
-    };
 
     /**
      * Constructs a new GoogleAuthCredential object.
@@ -74,17 +59,6 @@ public class GoogleAuthCredential extends AuthCredential{
         this.provider = provider;
         this.signInMethod = signInMethod;
         this.accessToken = accessToken;
-    }
-
-    /**
-     * Constructs a new GoogleAuthCredential object from a parcel.
-     *
-     * @param in The parcel containing the data.
-     */
-    protected GoogleAuthCredential(Parcel in) {
-        this.provider = Objects.requireNonNull(in.readString());
-        this.signInMethod = Objects.requireNonNull(in.readString());
-        this.accessToken = null;
     }
 
     /**
@@ -111,25 +85,4 @@ public class GoogleAuthCredential extends AuthCredential{
         return this.accessToken;
     }
 
-    /**
-     * Describes the contents of this parcelable object.
-     *
-     * @return A bitmask indicating the set of special object types held by the Parcelable object.
-     */
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    /**
-     * Writes this object to a parcel.
-     *
-     * @param parcel The parcel to write to.
-     * @param flags Additional flags about how the object should be written.
-     */
-    @Override
-    public void writeToParcel(@NonNull Parcel parcel, int flags) {
-        parcel.writeString(provider);
-        parcel.writeString(signInMethod);
-        // Don't write access token into parcel
-    }}
+}

@@ -26,6 +26,18 @@
 
 package com.oracle.database.osbdt.auth;
 
+import static com.oracle.database.osbdt.auth.AuthProvider.API_KEY;
+import static com.oracle.database.osbdt.auth.AuthProvider.BAAS_SERVICES;
+import static com.oracle.database.osbdt.auth.AuthProvider.DEVICE;
+import static com.oracle.database.osbdt.auth.AuthProvider.IDCS_PATH;
+import static com.oracle.database.osbdt.auth.AuthProvider.IDM_PATH;
+import static com.oracle.database.osbdt.auth.AuthProvider.METHOD;
+import static com.oracle.database.osbdt.auth.AuthProvider.MOBILE;
+import static com.oracle.database.osbdt.auth.AuthProvider.ONPREM_PATH;
+import static com.oracle.database.osbdt.auth.AuthProvider.SOCIAL;
+import static com.oracle.database.osbdt.auth.AuthProvider.SOCIAL_IDP;
+import static com.oracle.database.osbdt.auth.AuthProvider.UNDERSCORE_PATH;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -37,7 +49,7 @@ import com.oracle.database.osbdt.utils.Utils;
  * This class extends the AuthProvider abstract class and provides additional functionality for handling Google authentication.
  *</p>
  */
-public class GoogleAuthProvider extends AuthProvider {
+public class GoogleAuthProvider extends FederatedAuthProvider {
 
     /**
      * The sign-in method for Google authentication.
@@ -57,7 +69,7 @@ public class GoogleAuthProvider extends AuthProvider {
      * @param auth {@code OsbdtAuth} instance
      */
     public GoogleAuthProvider(@NonNull OsbdtAuth auth) {
-        super(PROVIDER_ID, GOOGLE_SIGN_IN_METHOD);
+        super();
         if(auth.getConfig().authType.equals("idcs")) {
             this.AUTH_URL =
                     Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
@@ -67,12 +79,21 @@ public class GoogleAuthProvider extends AuthProvider {
                                     IDCS_PATH,
                                     auth.getConfig().projectId,
                                     SOCIAL),
-                            METHOD, GOOGLE + '-' + IDCS_PATH,
                             DEVICE, MOBILE,
                             API_KEY, auth.getConfig().appId
                     );
         } else
-            AUTH_URL = null;
+            AUTH_URL = Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
+                            Config.UNDERSCORE_PATH,
+                            BAAS_SERVICES,
+                            Config.IDM_PATH,
+                            ONPREM_PATH,
+                            auth.getConfig().projectId,
+                            SOCIAL_IDP),
+                    METHOD, PROVIDER_ID,
+                    DEVICE, MOBILE,
+                    API_KEY, auth.getConfig().appId
+            );;
     }
 
     /**
@@ -83,6 +104,12 @@ public class GoogleAuthProvider extends AuthProvider {
      */
     protected String getAuthUrl() {
         return this.AUTH_URL;
+    }
+
+    @NonNull
+    @Override
+    String getProviderId() {
+        return PROVIDER_ID;
     }
 
     /**
