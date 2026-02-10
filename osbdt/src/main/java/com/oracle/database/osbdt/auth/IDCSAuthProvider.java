@@ -31,7 +31,7 @@ import static com.oracle.database.osbdt.auth.AuthProvider.BAAS_SERVICES;
 import static com.oracle.database.osbdt.auth.AuthProvider.DEVICE;
 import static com.oracle.database.osbdt.auth.AuthProvider.IDCS_PATH;
 import static com.oracle.database.osbdt.auth.AuthProvider.MOBILE;
-import static com.oracle.database.osbdt.auth.AuthProvider.SOCIAL_IDP;
+import static com.oracle.database.osbdt.auth.AuthProvider.SOCIAL;
 import static com.oracle.database.osbdt.auth.Config.IDM_PATH;
 import static com.oracle.database.osbdt.auth.Config.UNDERSCORE_PATH;
 
@@ -89,7 +89,7 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
                         IDM_PATH,
                         IDCS_PATH,
                         auth.getConfig().projectId,
-                        SOCIAL_IDP),
+                        SOCIAL),
                 DEVICE, MOBILE,
                 API_KEY, auth.getConfig().appId
         );
@@ -130,17 +130,9 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
         /**
          * Constructs a new Builder with the specified provider ID.
          *
-         * @param providerId The unique identifier for the authentication provider.
          */
-        public Builder(@NonNull String providerId) {
-            this.providerId = providerId;
-        }
-
-        /**
-         * Private constructor for internal use.
-         */
-        private Builder () {
-            this.providerId = null;
+        public Builder() {
+            this.providerId = PROVIDER_ID;
         }
 
         /**
@@ -241,52 +233,20 @@ public class IDCSAuthProvider extends FederatedAuthProvider {
     /**
      * Creates a new Builder instance for constructing IDCSAuthProvider objects.
      *
-     * @param providerId The unique identifier for the authentication provider.
      * @return A new Builder instance.
-     * @throws IllegalArgumentException If the providerId is null or empty.
      */
-    public static @NonNull IDCSAuthProvider.Builder newBuilder(@NonNull String providerId) throws IllegalArgumentException{
+    public static @NonNull IDCSAuthProvider.Builder newBuilder() {
 
-        if (providerId.isEmpty())
-        {
-            throw new IllegalArgumentException("Empty providerId received. Kindly provide a valid providerId");
-        }
-
-        return new IDCSAuthProvider.Builder(providerId);
-    }
-
-    /**
-     * Creates a new Builder instance for constructing IDCSAuthProvider objects.
-     *
-     * @param providerId The unique identifier for the authentication provider.
-     * @param osbdtAuth The OsbdtAuth instance (currently unused).
-     * @return A new Builder instance.
-     * @throws IllegalArgumentException If the providerId is null or empty.
-     */
-    public static @NonNull IDCSAuthProvider.Builder newBuilder(@NonNull String providerId,
-                                                            @NonNull OsbdtAuth osbdtAuth) throws IllegalArgumentException{
-        if (providerId.isEmpty())
-        {
-            throw new IllegalArgumentException("Empty providerId received. Kindly provide a valid providerId");
-        }
-
-        return new IDCSAuthProvider.Builder(providerId);
+        return new IDCSAuthProvider.Builder();
     }
 
     /**
      * Creates a new CredentialBuilder instance for constructing authentication credentials.
      *
-     * @param providerId The unique identifier for the authentication provider.
      * @return A new CredentialBuilder instance.
-     * @throws IllegalArgumentException If the providerId is null or empty.
      */
-    public static @NonNull CredentialBuilder newCredentialBuilder(@NonNull String providerId) throws IllegalArgumentException {
+    public static @NonNull CredentialBuilder newCredentialBuilder() {
 
-        if (providerId.isEmpty())
-        {
-            throw new IllegalArgumentException("Empty providerId received. Kindly provide a valid providerId");
-        }
-
-        return new IDCSAuthProvider.CredentialBuilder(providerId);
+        return new IDCSAuthProvider.CredentialBuilder(PROVIDER_ID);
     }
 }

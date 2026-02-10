@@ -39,6 +39,7 @@ import com.oracle.database.osbdt.auth.UserProfileChangeRequest;
 import com.oracle.database.osbdt.auth.*;
 import com.oracle.database.osbdt.OsbdtApp;
 import com.oracle.database.osbdt.OsbdtOptions;
+import com.oracle.database.osbdt.models.IDCSOptions;
 import com.oracle.database.osbdt.oracledb.*;
 import com.oracle.database.osbdt.storage.*;
 import com.oracle.database.osbdt.task.Task;
@@ -706,6 +707,11 @@ public class regression {
     public void testRealTimeCollectionAddListener() throws Exception {
         Log.d("RegressionTest", "Testing real-time collection add listener");
 
+        String[] credentials = getNewUserCredentials();
+        String email = credentials[0];
+        String password = credentials[1];
+
+        await(auth.createUserWithEmailAndPassword(email, password));
         String[] collections = { "testCollection" };
         addSecurityRule(collections);
 
@@ -4641,7 +4647,7 @@ public class regression {
 
         try {
             // Test newBuilder with providerId
-            IDCSAuthProvider.Builder builder = IDCSAuthProvider.newBuilder(testProviderId);
+            IDCSAuthProvider.Builder builder = IDCSAuthProvider.newBuilder();
             assertNotNull("IDCSAuthProvider builder should not be null", builder);
 
             // Test builder methods
@@ -4652,7 +4658,7 @@ public class regression {
             assertEquals("Provider ID should match", testProviderId, provider.getProviderId());
 
             // Test CredentialBuilder
-            IDCSAuthProvider.CredentialBuilder credBuilder = IDCSAuthProvider.newCredentialBuilder(testProviderId);
+            IDCSAuthProvider.CredentialBuilder credBuilder = IDCSAuthProvider.newCredentialBuilder();
             assertNotNull("IDCSAuthProvider CredentialBuilder should not be null", credBuilder);
 
             AuthCredential credential = credBuilder
@@ -4669,7 +4675,7 @@ public class regression {
         // Test error cases
         boolean threwException = false;
         try {
-            IDCSAuthProvider.newBuilder("");
+            IDCSAuthProvider.newBuilder();
         } catch (IllegalArgumentException e) {
             threwException = true;
         }
@@ -4677,7 +4683,7 @@ public class regression {
 
         threwException = false;
         try {
-            IDCSAuthProvider.newCredentialBuilder("");
+            IDCSAuthProvider.newCredentialBuilder();
         } catch (IllegalArgumentException e) {
             threwException = true;
         }
@@ -4750,7 +4756,7 @@ public class regression {
         try {
             // IDCSAuthCredential is created via IDCSAuthProvider.CredentialBuilder
             // Test the credential getters
-            IDCSAuthProvider.CredentialBuilder credBuilder = IDCSAuthProvider.newCredentialBuilder(testProvider);
+            IDCSAuthProvider.CredentialBuilder credBuilder = IDCSAuthProvider.newCredentialBuilder();
             AuthCredential credential = credBuilder
                     .setIdTokenWithRawNonce(mockAccessToken, null)
                     .build();
@@ -4794,7 +4800,7 @@ public class regression {
         String mockIdcsToken = "mock_idcs_token_12345";
 
         try {
-            IDCSAuthProvider.CredentialBuilder idcsCredBuilder = IDCSAuthProvider.newCredentialBuilder("test_idcs");
+            IDCSAuthProvider.CredentialBuilder idcsCredBuilder = IDCSAuthProvider.newCredentialBuilder();
             AuthCredential idcsCredential = idcsCredBuilder
                     .setIdTokenWithRawNonce(mockIdcsToken, null)
                     .build();
@@ -14058,7 +14064,7 @@ public class regression {
                 // The document should exist and have the expected structure
                 assertNotNull("Document should exist", doc);
             } else {
-                // If no results, column selection might not be supported or work differently
+                fail();
                 Log.d("QueryTest", "Column selection query returned no results - this may be expected behavior");
             }
             latch.countDown();
@@ -14076,11 +14082,11 @@ public class regression {
 
     @Test
     public void testColumnSelectionMultipleColumns() throws Exception {
-        String[] collections = { "city" };
+        String[] collections = { "city1" };
         addSecurityRule(collections);
 
         // Create test document with Alice having name, age, and score
-        await(db.collection("city").document("alice").set(new HashMap<String, Object>() {{
+        await(db.collection("city1").document("alice").set(new HashMap<String, Object>() {{
             put("name", "Alice");
             put("age", 25);
             put("score", 85.5);
@@ -14091,7 +14097,7 @@ public class regression {
 
         // Query with multiple column selection - return name, age, and score
         List<String> selectedColumns = Arrays.asList("name", "age", "score");
-        Query query = db.collection("city")
+        Query query = db.collection("city1")
                 .column(selectedColumns)
                 .whereEqualTo("name", "Alice");
 
@@ -14106,19 +14112,11 @@ public class regression {
                 assertEquals("Should have correct name", "Alice", doc.getString("name"));
                 assertNotNull("Should have age field", doc.get("age"));
                 assertNotNull("Should have score field", doc.get("score"));
-
+                assertNull("Shouldn't have city field", doc.get("city"));
                 // Verify the document is Alice
                 assertEquals("Alice", doc.getString("name"));
             } else {
-                // If no results, verify that Alice exists in our test data
-                Query verifyQuery = db.collection("city").whereEqualTo("name", "Alice");
-                verifyQuery.get().addOnSuccessListener(verifySnapshot -> {
-                    if (verifySnapshot != null && !verifySnapshot.isEmpty()) {
-                        Log.d("QueryTest", "Alice exists in test data, column selection may not be supported");
-                    }
-                    latch.countDown();
-                }).addOnFailureListener(e -> latch.countDown());
-                return;
+                fail("No columns present");
             }
             latch.countDown();
         }).addOnFailureListener(e -> {
@@ -14130,7 +14128,7 @@ public class regression {
         assertTrue(latch.await(10, TimeUnit.SECONDS));
 
         // Cleanup
-        await(db.collection("city").document("alice").delete());
+        await(db.collection("city1").document("alice").delete());
     }
 
     @Test
@@ -14188,6 +14186,7 @@ public class regression {
                     assertTrue("Should be ordered by age ascending", age1 <= age2);
                 }
             } else {
+                fail();
                 Log.d("QueryTest", "Column selection with query combination returned no results - this may be expected behavior");
             }
             latch.countDown();
@@ -15223,6 +15222,8 @@ public class regression {
                 Object nonExistent = doc.get("nonExistentField");
                 // This is acceptable - the field may not exist or may be null
                 assertNotNull("Document should exist", doc);
+            } else {
+                fail();
             }
             latch.countDown();
         });
@@ -15450,7 +15451,7 @@ public class regression {
             if (snapshot.size() >= 1) {
                 Log.d("QueryTest", "Complex query returned " + snapshot.size() + " documents - conditions are working");
             } else {
-                Log.d("QueryTest", "Complex query returned no documents - some features may not be fully implemented");
+                fail();
             }
 
             latch.countDown();
@@ -16560,5 +16561,3 @@ public class regression {
         await(db.collection("users").document("Scott").delete());
     }
 }
-
-

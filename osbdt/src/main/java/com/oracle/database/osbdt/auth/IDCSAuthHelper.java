@@ -624,16 +624,27 @@ class IDCSAuthHelper extends AuthHelper {
 
         OsbdtLogger.d(TAG, "Sending request to sign out user from idcs.");
 
+        // Get the ID token for logout
+        JsonObject data = this.auth.getCurrentUser().loadUserData();
+        String idToken = data.getString("idcsAuthnToken", "");
+
         HttpRequestHelper requestHelper = new HttpRequestHelper();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/scim+json");
+
+        // Add query parameters for OAuth2 logout endpoint
+        Map<String, String> queryParameters = new HashMap<>();
+        if (idToken != null && !idToken.isEmpty()) {
+            queryParameters.put("id_token_hint", idToken);
+        }
 
         requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getIdcsDomainURL(),
                         OAUTH2_PATH,
                         V1_PATH,
                         USER_LOGOUT_PATH),
                 "GET",
-                headers);
+                headers,
+                queryParameters);
 
         HttpResponse response = null;
         String form = "";
@@ -648,7 +659,6 @@ class IDCSAuthHelper extends AuthHelper {
         if (response.getStatus()) {
             OsbdtLogger.i(TAG, "Signed out user from idcs successfully.");
             try {
-                JsonObject data = this.auth.getCurrentUser().loadUserData();
                 String osbdtRefreshToken = data.getString("refreshToken", "");
                 String idcsRefreshToken = data.getString("idcsRefreshToken", "");
                 if (osbdtRefreshToken != null && !osbdtRefreshToken.isEmpty()) {
