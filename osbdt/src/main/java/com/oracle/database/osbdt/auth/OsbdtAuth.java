@@ -504,6 +504,8 @@ public class OsbdtAuth {
                     }
                 };
 
+                this.currentUser = result.getUser();
+
                 OsbdtLogger.d("SocialAuth", "Stored user data from signInWithCredential");
 
                 this.authHelper.saveUserDetails(this.app.getApplicationContext(),
