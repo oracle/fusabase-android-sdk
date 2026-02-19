@@ -242,8 +242,7 @@ class ONPREMAuthHelper extends AuthHelper {
                         "Unsupported credentials provided for linking.");
             }
 
-            if (this.auth.getCurrentUser() == null ||
-                (authCredential instanceof EmailAuthCredential && this.auth.getCurrentUser().password == null)) {
+            if (this.auth.getCurrentUser() == null) {
 
                 OsbdtLogger.d(TAG, "User must be recently logged in for linking provider.");
                 throw new OsbdtAuthException(OsbdtAuthException.Code.UNAUTHENTICATED.toString(),
@@ -255,10 +254,20 @@ class ONPREMAuthHelper extends AuthHelper {
                 headers.put("Authorization", authHeader);
             }
         }
+        
+        String password = "";
+        if (link && authCredential instanceof EmailAuthCredential) {
+            password = ((EmailAuthCredential) authCredential).getPassword();
+            if (password == null || password.isEmpty()) {
+                throw new OsbdtAuthException(
+                    OsbdtAuthException.Code.INVALID_ARGUMENT.toString(),
+                    "Password must be provided in EmailAuthCredential for linking.");
+            }
+        }
 
         JsonObject payload = Json.createObjectBuilder()
                 .add("token", authCredential.getIdToken())
-                .add("password", link ? this.auth.getCurrentUser().password : "")
+                .add("password", password)
                 .build();
 
         HttpRequestHelper requestHelper = new HttpRequestHelper();
