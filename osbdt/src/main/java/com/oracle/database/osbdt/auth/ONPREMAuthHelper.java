@@ -153,11 +153,11 @@ class ONPREMAuthHelper extends AuthHelper {
                 + response.getCode() + " with the following error " +
                 response.getError());
 
-        if(response.getCode() == 404 || response.getCode() == 403)
+        if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
             throw new OsbdtAuthInvalidCredentialsException(
                     OsbdtAuthException.Code.fromCode(response.getCode()).toString()
-                    , response.getError());
-        throw new OsbdtException(response.getError());
+                    , "Authentication failed. Please check your credentials and try again.");
+        throw new OsbdtException("Authentication failed. Please try again later.");
     }
 
     @NonNull
@@ -216,11 +216,11 @@ class ONPREMAuthHelper extends AuthHelper {
                 + response.getCode() + " with the following error " +
                 response.getError());
 
-        if(response.getCode() == 404 || response.getCode() == 403)
+        if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
             throw new OsbdtAuthInvalidCredentialsException(
                     OsbdtAuthException.Code.fromCode(response.getCode()).toString()
-                    , response.getError());
-        throw new OsbdtException(response.getError());
+                    , "Authentication failed. Please check your credentials and try again.");
+        throw new OsbdtException("Code exchange failed. Please try again later.");
     }
 
     @NonNull
@@ -308,11 +308,11 @@ class ONPREMAuthHelper extends AuthHelper {
                 + response.getCode() + " with the following error " +
                 response.getError());
 
-            if(response.getCode() == 404 || response.getCode() == 403)
-                throw new OsbdtAuthInvalidCredentialsException(
+        if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
+            throw new OsbdtAuthInvalidCredentialsException(
                     OsbdtAuthException.Code.fromCode(response.getCode()).toString()
-                    , response.getError());
-            throw new OsbdtException(response.getError());
+                    , "Authentication failed. Please check your credentials and try again.");
+        throw new OsbdtException("Sign in failed. Please try again later.");
         } catch (OsbdtException e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
             throw new OsbdtNetworkException("Network error encountered due to " + e.getCause());
@@ -382,11 +382,11 @@ class ONPREMAuthHelper extends AuthHelper {
                     + response.getCode() + " with the following error " +
                     response.getError());
 
-            if(response.getCode() == 404 || response.getCode() == 403)
+            if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
                 throw new OsbdtAuthInvalidCredentialsException(
                         OsbdtAuthException.Code.fromCode(response.getCode()).toString()
-                        , response.getError());
-            throw new OsbdtException(response.getError());
+                        , "Authentication failed. Please check your credentials and try again.");
+            throw new OsbdtException("Unlink operation failed. Please try again later.");
         } catch (OsbdtException e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
             throw new OsbdtNetworkException("Network error encountered due to " + e.getCause());
@@ -480,13 +480,13 @@ class ONPREMAuthHelper extends AuthHelper {
 
         if(response.getCode() == 400)
         {
-            throw new OsbdtAuthWeakPasswordException("Weak Password", response.getError());
+            throw new OsbdtAuthWeakPasswordException(OsbdtAuthException.Code.INVALID_ARGUMENT.toString(), "The password provided does not meet security requirements. Please choose a stronger password.");
         }
-        
+
         OsbdtLogger.e(TAG, "Failed to register user at" +
                 " osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
-        throw new OsbdtException(response.getError());
+        throw new OsbdtException("User registration failed. Please try again later.");
     }
 
     @NonNull
@@ -543,7 +543,7 @@ class ONPREMAuthHelper extends AuthHelper {
         OsbdtLogger.e(TAG, "Failed to sign out user from" +
                 " Osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
-        throw new OsbdtException(response.getError());
+        throw new OsbdtException("Sign out failed. Please try again later.");
     }
 
     @NonNull
@@ -591,7 +591,7 @@ class ONPREMAuthHelper extends AuthHelper {
                 " osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
         throw new OsbdtAuthEmailException(OsbdtAuthException.Code.INVALID_ARGUMENT.toString(),
-                response.getError());
+                "Unable to send password reset email. Please check the email address and try again.");
     }
 
     @NonNull
@@ -641,7 +641,7 @@ class ONPREMAuthHelper extends AuthHelper {
         OsbdtLogger.e(TAG, "Failed to send verify password reset request " +
                 " at Osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
-        throw new OsbdtException(response.getError());
+        throw new OsbdtException("Unable to verify password reset code. Please check the code and try again.");
     }
 
     @NonNull
@@ -705,6 +705,6 @@ class ONPREMAuthHelper extends AuthHelper {
         OsbdtLogger.e(TAG, "Failed to Confirm password reset from" +
                 " Osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
-        throw new OsbdtException(response.getError());
+        throw new OsbdtException("Unable to reset password. Please check your reset code and try again.");
     }
 }

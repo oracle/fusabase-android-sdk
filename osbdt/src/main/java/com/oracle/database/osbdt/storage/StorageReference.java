@@ -279,7 +279,7 @@ public class StorageReference {
                     boolean isSuccess = destinationFile.createNewFile();
 
                     if (!isSuccess) {
-                        throw new StorageException("File cannot be created as it doesn't exists.", StorageException.Code.INTERNAL);
+                        throw new StorageException("Unable to create destination file", StorageException.Code.CANNOT_CREATE_FILE);
                     }
 
                 }
@@ -750,7 +750,7 @@ public class StorageReference {
 
         if(uri.getPath() == null)
         {
-            throw new IllegalArgumentException("Invlaid URI provided");
+            throw new IllegalArgumentException("Invalid URI provided");
         }
 
         UploadTask uploadTask = new UploadTask(this);

@@ -31,12 +31,16 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
+
 import com.oracle.database.osbdt.http.WebSocketClient;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 import com.oracle.database.osbdt.task.OnCompleteListener;
 import com.oracle.database.osbdt.task.Task;
+import com.oracle.database.osbdt.utils.Utils;
 
+import java.security.GeneralSecurityException;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
@@ -170,8 +174,27 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                         .build();
 
                 CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-                    // Establish a connection with ORDS
+                    try {
+                        String key = Utils.getPreferenceData(oracledb.getApp().getApplicationContext(), "LOGGED_IN_USER", "OsbdtPreferences");
+                        if (key == null || key.isEmpty()) {
+                            OsbdtLogger.e(TAG, "User not authenticated - no logged in user key found.");
+                            return "";
+                        }
 
+                        JsonObject userDetails = Utils.loadJsonObjectFromPreferences(oracledb.getApp().getApplicationContext(), key, "OsbdtPreferences");
+                        if (!userDetails.containsKey("accessToken")) {
+                            OsbdtLogger.e(TAG, "User not authenticated - no access token found.");
+                            return "";
+                        }
+                    } catch (GeneralSecurityException e) {
+                        OsbdtLogger.e(TAG, "Security error during authentication check: " + e.getMessage());
+                        return "";
+                    } catch (Exception e) {
+                        OsbdtLogger.e(TAG, "Unexpected error during authentication check: " + e.getMessage());
+                        return "";
+                    }
+
+                    // Establish a connection with ORDS
                     if (!webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.OPEN) ||
                         !webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.CONNECTING) ) {
                         webSocketController.establishWebSocketConnection();
@@ -197,16 +220,21 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                 listenerData.getReference().get(Source.SERVER).addOnCompleteListener(new OnCompleteListener<Snapshot>() {
                     @Override
                     public void onComplete(Task<Snapshot> task) {
-                        if (task.isSuccessful()) {
-                            // Emitting event directly
-                            listenerData.executeListener(task.getResult(),
-                                    null);
-                            webSocketController.processQueue(queryId);
-                        } else {
-                            throw new RuntimeException("Cannot fetch the current snapshot for the " +
-                                    "data at " + listenerData.getReference().getPath() + ". Failed to" +
-                                    "register onSnapshot listener.");
-                        }
+
+                            if (task.isSuccessful()) {
+                                // Emitting event directly
+                                listenerData.executeListener(task.getResult(),
+                                        null);
+                                webSocketController.processQueue(queryId);
+                            } else {
+                                OsbdtOracledbException error = new OsbdtOracledbException(
+                                        "Cannot fetch the current snapshot for the data at " +
+                                                listenerData.getReference().getPath() + ". " +
+                                                Objects.requireNonNull(task.getException().getMessage()),
+                                        OsbdtOracledbException.Code.INTERNAL
+                                );
+                                listenerData.executeListener(null, error);
+                            }
                     }
                 });
                 pollingController.listenersUpdated();

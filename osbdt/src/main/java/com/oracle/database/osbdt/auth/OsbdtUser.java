@@ -203,7 +203,7 @@ public abstract class OsbdtUser implements UserInfo {
                 taskCompletionSource.setResult(null);
                 return "";
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to update password. Please try again."));
             }
         });
         taskCompletionSource.handleFuture(future);
@@ -235,7 +235,7 @@ public abstract class OsbdtUser implements UserInfo {
                 taskCompletionSource.setResult(null);
                 return "";
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to update user profile. Please try again."));
             }
         });
         taskCompletionSource.handleFuture(future);
@@ -248,13 +248,6 @@ public abstract class OsbdtUser implements UserInfo {
      * @return task that verifies the email address
      */
     public @NonNull Task<Void> sendEmailVerification () {
-
-        if (this.getEmail() == null) {
-            OsbdtLogger.e("OsbdtUser", "Cannot send email for verification." +
-                    " No email is provided.");
-            throw new RuntimeException("Email is null. Cannot send email for verification.");
-        }
-
         TaskCompletionSource<Void> taskCompletionSource = new TaskCompletionSource<>();
         Task<Void> task = taskCompletionSource.getTask();
 
@@ -262,7 +255,7 @@ public abstract class OsbdtUser implements UserInfo {
             try {
                 this.userHelper.sendEmailVerificationHelper(this.getEmail(), this.getUid());
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to send email verification. Please try again."));
             }
             taskCompletionSource.setResult(null);
             return "";

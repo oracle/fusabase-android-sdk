@@ -192,24 +192,24 @@ public class regression {
 
     private static void initializeInstances() throws Exception {
         OsbdtOptions.Builder optionsBuilder = new OsbdtOptions.Builder();
-        optionsBuilder.setAuthType("idcs");
+        optionsBuilder.setAuthType("base");
 
         optionsBuilder
                 .setOrdsHost("https://phoenix555379.dev3sub4phx.databasede3phx.oraclevcn.com:8443/ords/USER1/");
-        IDCSOptions idcsOptions = new IDCSOptions.Builder()
-                .setClientId("94b4adc5dbf1406d940aabff25c6eb40")
-                .setClientSecret("idcscs-796f8bd6-6121-436c-b8af-0915346b3693")
-                .setSelfRegistrationProfile("1941ffb49cae49d39473613b2ea2ca46")
-                .setDomainURL("https://idcs-360c1204d11f41d3836e7fb2f1769ca7.identity.oraclecloud.com").build();
-        optionsBuilder.setIDCSOptions(idcsOptions);
-        optionsBuilder.setProjectId("4959329616959EC3E0631F965E64018C");
-        optionsBuilder.setAppId("49595943F765AE49E0631F965E64001C");
+//        IDCSOptions idcsOptions = new IDCSOptions.Builder()
+//                .setClientId("94b4adc5dbf1406d940aabff25c6eb40")
+//                .setClientSecret("idcscs-796f8bd6-6121-436c-b8af-0915346b3693")
+//                .setSelfRegistrationProfile("1941ffb49cae49d39473613b2ea2ca46")
+//                .setDomainURL("https://idcs-360c1204d11f41d3836e7fb2f1769ca7.identity.oraclecloud.com").build();
+//        optionsBuilder.setIDCSOptions(idcsOptions);
+        optionsBuilder.setProjectId("4B933F425F8783FCE0631F965E648EE6");
+        optionsBuilder.setAppId("4B94EB0E5F861A96E0631F965E640978");
         optionsBuilder.setObjectType("dbfs");
         optionsBuilder.setSchema("USER1");
         optionsBuilder.setStorageBucket("dbfs_AOKEEEVIOSUTOZG");
         optionsBuilder.setApiVersion("2.0");
         optionsBuilder.setAppName("testapp");
-        optionsBuilder.setAuthId("495932A949489ED0E0631F965E64704C");
+        optionsBuilder.setAuthId("4B933F5522528404E0631F965E64C746");
         optionsBuilder.setUseSocket(true);
         optionsBuilder.setUploadChunkSize(1000);
         optionsBuilder.setAllowsSelfSignedCertificates(true);

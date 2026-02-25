@@ -668,8 +668,8 @@ class QueryHelper {
         } else if (response.getCode() == 404 || response.getCode() == 403){
               return Json.createObjectBuilder().add("ret", Json.createArrayBuilder().build()).build();
         } else {
-            OsbdtLogger.w("OsbdtOradb", "getDoc failed with response message " + response.getError());
-            throw new OsbdtOracledbException("RunQuery failed with following message " + response.getError(),
+            OsbdtLogger.w("OsbdtOradb", "getDoc failed with response code " + response.getCode());
+            throw new OsbdtOracledbException("Query execution failed",
                     OsbdtOracledbException.Code.fromCode(response.getCode()));
         }
         return result;
@@ -755,8 +755,8 @@ class QueryHelper {
             reader.close();
             return result;
         } else {
-            OsbdtLogger.w("OsbdtOradb", "deleteDoc failed with response message " + response.getError());
-            throw new OsbdtOracledbException("Delete document failed with following message " + response.getError(),
+            OsbdtLogger.w("OsbdtOradb", "deleteDoc failed with response code " + response.getCode());
+            throw new OsbdtOracledbException("Document deletion failed",
                     OsbdtOracledbException.Code.fromCode(response.getCode()));
         }
     }
@@ -914,8 +914,8 @@ class QueryHelper {
             return result;
 
         } else {
-            OsbdtLogger.w("OsbdtOradb", "setDoc failed with response message " + response.getError());
-            throw new OsbdtOracledbException("Set document failed with following message " + response.getError(),
+            OsbdtLogger.w("OsbdtOradb", "setDoc failed with response code " + response.getCode());
+            throw new OsbdtOracledbException("Document creation failed",
                     OsbdtOracledbException.Code.fromCode(response.getCode()));
         }
     }
@@ -1032,8 +1032,8 @@ class QueryHelper {
             reader.close();
             return result;
         } else {
-            OsbdtLogger.w("OsbdtOradb", "updateDoc failed with response message " + response.getError());
-            throw new OsbdtOracledbException("Update document failed with following message " + response.getError(),
+            OsbdtLogger.w("OsbdtOradb", "updateDoc failed with response code " + response.getCode());
+            throw new OsbdtOracledbException("Document update failed",
                     OsbdtOracledbException.Code.fromCode(response.getCode()));
         }
     }

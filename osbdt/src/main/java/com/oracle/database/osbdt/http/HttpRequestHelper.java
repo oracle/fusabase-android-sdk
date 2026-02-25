@@ -202,7 +202,6 @@ public class HttpRequestHelper {
 
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Failed to configure self-signed certificate support", e);
-            throw new RuntimeException("Failed to configure SSL for self-signed certificates", e);
         }
     }
 

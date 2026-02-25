@@ -717,7 +717,7 @@ public class OsbdtAuth {
                 this.informIdTokenSubscribers();
 
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Sign in failed. Please check your credentials and try again."));
             }
 
             return "";
@@ -743,6 +743,8 @@ public class OsbdtAuth {
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
 
+                this.authHelper.performSignOut(this.currentUser.getRefreshToken());
+                this.updateCurrentUser(null);
                 try {
                     this.authHelper.clearUserDetails(this.app.getApplicationContext(),
                             this.currentUser.getUid(), PREFERENCES_NAME);
@@ -752,11 +754,9 @@ public class OsbdtAuth {
                     OsbdtLogger.d(TAG, "User data cannot be cleared because " + e.getMessage());
                 }
 
-                this.authHelper.performSignOut(this.currentUser.getRefreshToken());
-                this.updateCurrentUser(null);
                 taskCompletionSource.setResult(null);
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Sign out failed. Please try again."));
             }
             return "";
         });
@@ -806,7 +806,7 @@ public class OsbdtAuth {
                 taskCompletionSource.setResult(backendUsername);
                 return "";
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Password reset verification failed. Please check your code and try again."));
             }
         });
         taskCompletionSource.handleFuture(future);
@@ -830,7 +830,7 @@ public class OsbdtAuth {
                 taskCompletionSource.setResult(null);
                 return "";
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Password reset failed. Please try again."));
             } finally {
                 // Always clear the stored email after the operation
                 try {

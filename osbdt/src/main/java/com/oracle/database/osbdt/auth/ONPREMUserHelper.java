@@ -93,7 +93,7 @@ class ONPREMUserHelper extends UserHelper {
         JsonObject userData = user.loadUserData();
         String refreshToken = userData.containsKey("refreshToken") ? userData.getString("refreshToken") : "";
         if (refreshToken.isEmpty()) {
-            throw new OsbdtException("No refresh token available");
+            throw new OsbdtAuthException(OsbdtAuthException.Code.INVALID_ARGUMENT.toString(), "Authentication session expired. Please sign in again.");
         }
 
         JsonObject payload = Json.createObjectBuilder()
@@ -163,7 +163,7 @@ class ONPREMUserHelper extends UserHelper {
         OsbdtLogger.e(TAG, "Failed to refresh access token for user from " +
                 " Osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
-        throw new OsbdtException(response.getError());
+        throw new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to refresh authentication session. Please sign in again.");
     }
 
     protected boolean validateAccessToken() {
@@ -255,7 +255,7 @@ class ONPREMUserHelper extends UserHelper {
         OsbdtLogger.e(TAG, "Failed to update profile of user from" +
                 " Osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
-        throw new OsbdtException(response.getError());
+        throw new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to update user profile. Please try again later.");
 
     }
 
@@ -320,7 +320,7 @@ class ONPREMUserHelper extends UserHelper {
         OsbdtLogger.e(TAG, "Failed to update password for user from" +
                 " Osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
-        throw new OsbdtException(response.getError());
+        throw new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to update password. Please check your current password and try again.");
     }
 
     protected void sendEmailVerificationHelper (@NonNull String email,
@@ -370,7 +370,7 @@ class ONPREMUserHelper extends UserHelper {
                 " Osbdt with response code " + response.getCode() + " with the following error " +
                 response.getError());
         throw new OsbdtAuthEmailException(OsbdtAuthException.Code.INVALID_ARGUMENT.toString(),
-                response.getError());
+                "Unable to send email verification. Please check the email address and try again.");
     }
 
 }
