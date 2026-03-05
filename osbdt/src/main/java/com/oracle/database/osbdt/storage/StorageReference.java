@@ -708,7 +708,6 @@ public class StorageReference {
                 uploadTask.setResult(taskSnapshot);
 
                 this.fileUploadTasks.removeIf(task -> String.join("/", this.path).equals(task.getStorageReference().getPath()));
-
             } catch (Exception e) {
                 Exception exception = e;
                 if(!(exception instanceof StorageException))

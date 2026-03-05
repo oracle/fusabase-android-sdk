@@ -731,23 +731,27 @@ public class OsbdtAuth {
      * Signs out the current user.
      */
      public @NonNull Task<Void> signOut() {
-
-        if(this.getCurrentUser() == null)
-        {
-            throw new IllegalStateException("No signed in user is present to logOut.");
-        }
-
         TaskCompletionSource<Void> taskCompletionSource = new TaskCompletionSource<>();
         Task<Void> task = taskCompletionSource.getTask();
 
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
 
-                this.authHelper.performSignOut(this.currentUser.getRefreshToken());
+                if (this.getCurrentUser() == null) {
+                    OsbdtLogger.w(TAG, "No signed in user is present to logout.");
+                    taskCompletionSource.setResult(null);
+                    return "";
+                }
+
+                final OsbdtUser user = this.currentUser;
+                final String refreshToken = user.getRefreshToken();
+                final String uid = user.getUid();
+
+                this.authHelper.performSignOut(refreshToken);
                 this.updateCurrentUser(null);
                 try {
                     this.authHelper.clearUserDetails(this.app.getApplicationContext(),
-                            this.currentUser.getUid(), PREFERENCES_NAME);
+                            uid, PREFERENCES_NAME);
                     OsbdtLogger.d(TAG, "User data cleared");
                 } catch (OsbdtException e)
                 {
