@@ -483,7 +483,13 @@ public class DocumentReference extends EntityReference {
 
         if(operation.equals("INSERT") && currentDocSnap.getDocument() != null)
         {
-            throw new OsbdtOracledbException("Current Snap is not null and an INSERT notification is received.", OsbdtOracledbException.Code.INTERNAL);
+            OsbdtLogger.w(TAG,
+                    "Ignoring unexpected INSERT notification for reference: " + this.getPath() +
+                            ", currentDocId=" + currentDocSnap.getId() +
+                            ", rowId=" + changedDataNotification.getString("rowId", "") +
+                            ", queryId=" + changedDataNotification.getInt("queryId", 0) +
+                            ", changedDataOID=" + (document.containsKey("OID") ? document.getString("OID") : ""));
+            return null;
         }
 
         dataBuilder.add("rowId", changedDataNotification.getString("rowId"));

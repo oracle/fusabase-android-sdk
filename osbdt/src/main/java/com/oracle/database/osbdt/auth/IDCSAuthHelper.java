@@ -127,7 +127,7 @@ class IDCSAuthHelper extends AuthHelper {
             } else {
                 OsbdtLogger.e(TAG, "Invalid response received with response code " +
                     response.getCode() + " with following error " + response.getError());
-                throw new OsbdtException(response.getError());
+                throw new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to obtain authentication token. Please try again later.");
             }
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing network operation");
@@ -170,7 +170,7 @@ class IDCSAuthHelper extends AuthHelper {
             } else {
                 OsbdtLogger.e(TAG, "Invalid response received with response code " +
                     response.getCode() + " with following error " + response.getError());
-                throw new OsbdtException(response.getError());
+                throw new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to retrieve authentication form. Please try again later.");
             }
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
@@ -204,7 +204,7 @@ class IDCSAuthHelper extends AuthHelper {
         } catch (Exception e)
         {
             OsbdtLogger.e(TAG, "Cannot fetch user details from idcs.");
-            throw new OsbdtException("Cannot fetch user details from idcs because " + e.getMessage());
+            throw new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Failed to retrieve user details. Please try again later.");
         }
     }
 
@@ -258,7 +258,11 @@ class IDCSAuthHelper extends AuthHelper {
             } else {
                 OsbdtLogger.e(TAG, "Invalid response received with response code " +
                         response.getCode() + " with following error " + response.getError());
-                throw new OsbdtException(response.getError());
+                if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
+                    throw new OsbdtAuthInvalidCredentialsException(
+                        OsbdtAuthException.Code.fromCode(response.getCode()).toString()
+                        , "Authentication failed. Please check your credentials and try again.");
+                throw new OsbdtException("Authentication failed. Please try again later.");
             }
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
@@ -324,7 +328,11 @@ class IDCSAuthHelper extends AuthHelper {
             } else {
                 OsbdtLogger.e(TAG, "Invalid response received with response code " +
                         response.getCode() + " with following error " + response.getError());
-                throw new OsbdtException(response.getError());
+                if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
+                    throw new OsbdtAuthInvalidCredentialsException(
+                        OsbdtAuthException.Code.fromCode(response.getCode()).toString()
+                        , "Authentication failed. Please check your credentials and try again.");
+                throw new OsbdtException("Authentication failed. Please try again later.");
             }
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
@@ -396,7 +404,11 @@ class IDCSAuthHelper extends AuthHelper {
             } else {
                 OsbdtLogger.e(TAG, "Invalid response received with response code " +
                     response.getCode() + " with following error " + response.getError());
-                throw new OsbdtException(response.getError());
+                if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
+                    throw new OsbdtAuthInvalidCredentialsException(
+                        OsbdtAuthException.Code.fromCode(response.getCode()).toString()
+                        , "Authentication failed. Please check your credentials and try again.");
+                throw new OsbdtException("Authentication failed. Please try again later.");
             }
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
@@ -460,11 +472,11 @@ class IDCSAuthHelper extends AuthHelper {
                 + response.getCode() + " with the following error " +
                 response.getError());
 
-            if(response.getCode() == 404 || response.getCode() == 403)
+            if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
                 throw new OsbdtAuthInvalidCredentialsException(
                     OsbdtAuthException.Code.fromCode(response.getCode()).toString()
-                    , response.getError());
-            throw new OsbdtException(response.getError());
+                    , "Authentication failed. Please check your credentials and try again.");
+            throw new OsbdtException("Code exchange failed. Please try again later.");
         } catch (Exception e) {
             OsbdtLogger.e(TAG, "Network error encountered while performing the operation");
             Exception exception = e;

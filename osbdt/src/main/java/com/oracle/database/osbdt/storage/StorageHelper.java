@@ -757,6 +757,16 @@ class StorageHelper {
             JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
             JsonObject result = reader.readObject();
             reader.close();
+
+            uploadTask.setResult(uploadTask.new TaskSnapshot(
+                    storageReference,
+                    uploadTask.getResult() != null ? uploadTask.getResult().getMetadata() : null,
+                    bytes.length,
+                    bytes.length));
+            if (uploadTask.getProgressListener() != null) {
+                uploadTask.getListenerExecutor().post(uploadTask::onProgress);
+            }
+
             return result;
         }
 

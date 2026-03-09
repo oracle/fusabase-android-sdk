@@ -51,7 +51,7 @@ public class OsbdtAuthException extends OsbdtException {
         FILE_NOT_FOUND(1001, "file-not-found"),
         CANNOT_CREATE_FILE(1002, "cannot-create-file"),
         CANCELLED(1003, "cancelled"),
-        NETWORK_ERROR(1004, "Oradb encountered a network error." +
+        NETWORK_ERROR(1004, "OSBDT encountered a network error." +
                 " Kindly retry when the network is available.");
 
         private final int code;

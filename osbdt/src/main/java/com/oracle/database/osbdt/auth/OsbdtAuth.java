@@ -717,7 +717,7 @@ public class OsbdtAuth {
                 this.informIdTokenSubscribers();
 
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Sign in failed. Please check your credentials and try again."));
             }
 
             return "";
@@ -731,32 +731,36 @@ public class OsbdtAuth {
      * Signs out the current user.
      */
      public @NonNull Task<Void> signOut() {
-
-        if(this.getCurrentUser() == null)
-        {
-            throw new IllegalStateException("No signed in user is present to logOut.");
-        }
-
         TaskCompletionSource<Void> taskCompletionSource = new TaskCompletionSource<>();
         Task<Void> task = taskCompletionSource.getTask();
 
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
 
+                if (this.getCurrentUser() == null) {
+                    OsbdtLogger.w(TAG, "No signed in user is present to logout.");
+                    taskCompletionSource.setResult(null);
+                    return "";
+                }
+
+                final OsbdtUser user = this.currentUser;
+                final String refreshToken = user.getRefreshToken();
+                final String uid = user.getUid();
+
+                this.authHelper.performSignOut(refreshToken);
+                this.updateCurrentUser(null);
                 try {
                     this.authHelper.clearUserDetails(this.app.getApplicationContext(),
-                            this.currentUser.getUid(), PREFERENCES_NAME);
+                            uid, PREFERENCES_NAME);
                     OsbdtLogger.d(TAG, "User data cleared");
                 } catch (OsbdtException e)
                 {
                     OsbdtLogger.d(TAG, "User data cannot be cleared because " + e.getMessage());
                 }
 
-                this.authHelper.performSignOut(this.currentUser.getRefreshToken());
-                this.updateCurrentUser(null);
                 taskCompletionSource.setResult(null);
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Sign out failed. Please try again."));
             }
             return "";
         });
@@ -806,7 +810,7 @@ public class OsbdtAuth {
                 taskCompletionSource.setResult(backendUsername);
                 return "";
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Password reset verification failed. Please check your code and try again."));
             }
         });
         taskCompletionSource.handleFuture(future);
@@ -830,7 +834,7 @@ public class OsbdtAuth {
                 taskCompletionSource.setResult(null);
                 return "";
             } catch (OsbdtException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(new OsbdtAuthException(OsbdtAuthException.Code.INTERNAL.toString(), "Password reset failed. Please try again."));
             } finally {
                 // Always clear the stored email after the operation
                 try {

@@ -46,6 +46,7 @@ import android.content.res.Resources;
 
 import androidx.annotation.NonNull;
 
+import com.oracle.database.osbdt.OsbdtException;
 import com.oracle.database.osbdt.OsbdtOptions;
 import com.oracle.database.osbdt.logger.OsbdtLogger;
 import com.oracle.database.osbdt.models.IDCSOptions;
@@ -131,8 +132,7 @@ public class OsbdtAppCore {
                 default:
                     OsbdtLogger.e("Invalid auth_type " + Utils.getConfigValue(context, OsbdtConstants.AUTH_TYPE_KEY) +
                             "encountered.");
-                    throw new RuntimeException("Invalid auth_type detected." +
-                            " Kindly check your osbdt-config.json for any errors.");
+                    throw new OsbdtException("Invalid authentication type configured. Please check your osbdt-config.json file.");
             }
 
         } catch (Resources.NotFoundException e) {

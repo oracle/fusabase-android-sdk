@@ -279,7 +279,7 @@ public class StorageReference {
                     boolean isSuccess = destinationFile.createNewFile();
 
                     if (!isSuccess) {
-                        throw new StorageException("File cannot be created as it doesn't exists.", StorageException.Code.INTERNAL);
+                        throw new StorageException("Unable to create destination file", StorageException.Code.CANNOT_CREATE_FILE);
                     }
 
                 }
@@ -708,7 +708,6 @@ public class StorageReference {
                 uploadTask.setResult(taskSnapshot);
 
                 this.fileUploadTasks.removeIf(task -> String.join("/", this.path).equals(task.getStorageReference().getPath()));
-
             } catch (Exception e) {
                 Exception exception = e;
                 if(!(exception instanceof StorageException))
@@ -750,7 +749,7 @@ public class StorageReference {
 
         if(uri.getPath() == null)
         {
-            throw new IllegalArgumentException("Invlaid URI provided");
+            throw new IllegalArgumentException("Invalid URI provided");
         }
 
         UploadTask uploadTask = new UploadTask(this);

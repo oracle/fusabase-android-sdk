@@ -167,8 +167,11 @@ public class QuerySnapshot extends Snapshot implements Iterable<QueryDocumentSna
             }
 
             if (oldDoc == null) {
-                OsbdtLogger.e(TAG, "Unknown DELETE notification received for non existing document.");
-                throw new OsbdtOracledbException("Unknown DELETE notification received for non existing document.", OsbdtOracledbException.Code.INTERNAL);
+                OsbdtLogger.w(TAG, "DELETE notification received for document not in snapshot: " + changedDataNotification.getString("rowId"));
+                // Document already removed or not in scope, skip processing
+                this.documentSnapshots = oldSnap.getQueryDocumentSnapshots();
+                this.documentChanges = new ArrayList<>();
+                return;
             }
 
             notificationPath.add(oldDoc.getDocument().getId());
@@ -243,11 +246,10 @@ public class QuerySnapshot extends Snapshot implements Iterable<QueryDocumentSna
                     this.documentChanges.add(new DocumentChange(newDocSnap, oldSnap.getQueryDocumentSnapshots().size(), -1, docChangeType));
                     break;
                 case MODIFIED: {
-
-                    if(oldDoc == null)
-                    {
-                        OsbdtLogger.e(TAG, "Unknown UPDATE notification received for non existing document.");
-                        throw new OsbdtOracledbException("Unknown UPDATE notification received for non existing document.", OsbdtOracledbException.Code.INTERNAL);
+                    if(oldDoc == null) {
+                        OsbdtLogger.w(TAG, "UPDATE notification received for document not in snapshot: " + changedDataNotification.getString("rowId"));
+                        // Document already updated or not in scope, skip processing
+                        break;
                     }
                     updatedQueryDocSnap.replaceAll(queryDocSnap ->
                             (queryDocSnap.getDocument().getRowId().equals(changedDataNotification.get("rowId"))) ? newDocSnap : queryDocSnap);
@@ -255,10 +257,10 @@ public class QuerySnapshot extends Snapshot implements Iterable<QueryDocumentSna
                     break;
                 }
                 case REMOVED: {
-                    if(oldDoc == null)
-                    {
-                        OsbdtLogger.e(TAG, "Unknown DELETE notification received for non existing document.");
-                        throw new OsbdtOracledbException("Unknown DELETE notification received for non existing document.", OsbdtOracledbException.Code.INTERNAL);
+                    if(oldDoc == null) {
+                        OsbdtLogger.w(TAG, "DELETE notification received for document not in snapshot: " + changedDataNotification.getString("rowId"));
+                        // Document already removed or not in scope, skip
+                        break;
                     }
                     this.documentChanges.add(new DocumentChange(newDocSnap, -1, oldDoc.getDocIndex().intValue(), docChangeType));
                     updatedQueryDocSnap.remove(oldDoc);

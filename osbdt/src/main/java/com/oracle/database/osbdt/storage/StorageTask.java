@@ -734,6 +734,12 @@ public abstract class StorageTask<ResultT extends StorageTask.ProvideError> exte
     }
 
     protected void onSuccess() {
+        try {
+            if (this.progressListener != null) {
+                this.listenerExecutor.post(this::onProgress);
+            }
+        } catch (Exception ignored) {
+        }
         if(this.successListener != null){
             listenerExecutor.post(new Runnable() {
                 @Override

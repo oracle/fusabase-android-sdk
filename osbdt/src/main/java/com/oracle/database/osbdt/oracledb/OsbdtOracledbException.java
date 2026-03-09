@@ -86,7 +86,7 @@ public class OsbdtOracledbException extends OsbdtException {
         CANCELLED(1003, "cancelled"),
 
         /** Network connectivity error occurred */
-        NETWORK_ERROR(1004, "Oradb encountered a network error. Kindly retry when the network is available.");
+        NETWORK_ERROR(1004, "network-error");
 
         /** The numeric error code */
         private final int code;
