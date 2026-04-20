@@ -98,7 +98,7 @@ public class OsbdtAuth {
                         app.osbdtOptions.getClientId(),
                         app.osbdtOptions.getOrdsHost(),
                         app.osbdtOptions.getDomainURL(),
-                        app.osbdtOptions.getSelfRegistrationProfile());
+                        "");
                 this.authHelper = new IDCSAuthHelper((IDCSConfig) this.config, this);
                 break;
             default:

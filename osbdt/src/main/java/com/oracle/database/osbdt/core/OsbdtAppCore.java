@@ -39,7 +39,6 @@ import static com.oracle.database.osbdt.core.OsbdtConstants.DEFAULT_LONG_POLLING
 import static com.oracle.database.osbdt.core.OsbdtConstants.DEFAULT_UPLOAD_CHUNK_SIZE;
 import static com.oracle.database.osbdt.core.OsbdtConstants.DEFAULT_USE_SOCKET;
 import static com.oracle.database.osbdt.core.OsbdtConstants.DOMAIN_URL;
-import static com.oracle.database.osbdt.core.OsbdtConstants.SELF_REGISTRATION_PROFILE;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -121,7 +120,6 @@ public class OsbdtAppCore {
                     IDCSOptions idcsOptions = new IDCSOptions.Builder()
                         .setClientId(Utils.getConfigValue(context, CLIENT_ID))
                         .setClientSecret(Utils.getConfigValue(context,CLIENT_SECRET))
-                        .setSelfRegistrationProfile(Utils.getConfigValue(context,SELF_REGISTRATION_PROFILE))
                         .setDomainURL(Utils.getConfigValue(context,DOMAIN_URL))
                                 .build();
                         optionsBuilder.setIDCSOptions(idcsOptions);

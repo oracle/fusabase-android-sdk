@@ -56,7 +56,6 @@ public final class OsbdtConstants {
     // IDCS configuration keys
     public static final String CLIENT_ID = "osbdt_clientId";
     public static final String CLIENT_SECRET = "osbdt_clientSecret";
-    public static final String SELF_REGISTRATION_PROFILE = "osbdt_selfRegistrationProfile";
     public static final String DOMAIN_URL = "osbdt_domain_url";
 
     // Authentication TYPES

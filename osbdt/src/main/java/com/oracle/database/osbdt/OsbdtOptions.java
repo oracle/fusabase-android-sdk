@@ -190,15 +190,6 @@ public class OsbdtOptions {
     }
 
     /**
-     * Gets the self-registration profile.
-     *
-     * @return The self-registration profile.
-     */
-    public String getSelfRegistrationProfile() {
-        return this.options.getSelfRegistrationProfile();
-    }
-
-    /**
      * Gets the schema.
      *
      * @return The schema.
