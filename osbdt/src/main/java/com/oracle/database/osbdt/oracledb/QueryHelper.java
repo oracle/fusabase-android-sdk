@@ -338,6 +338,9 @@ class QueryHelper {
             case DELETE:
                 fieldMap.remove(fieldName);
                 break;
+            case DELETE_VECTOR:
+                fieldMap.remove(fieldName);
+                break;
             case INCREMENT:
                 handleIncrementOperation(fieldMap, fieldName, fieldValue);
                 break;
@@ -454,7 +457,28 @@ class QueryHelper {
         List<Map<String, Object>> updatedFormat = new ArrayList<>();
         List<String> servertimestamp = new ArrayList<>();
 
-        updates.forEach((key, value) -> {
+        Map<String, Object> embeddingsSet = extractEmbeddingsSetMap(updates);
+        List<String> embeddingsDelete = extractEmbeddingsDeleteKeys(updates);
+        if (!embeddingsSet.isEmpty()) {
+            HashMap<String, Object> request = new HashMap<>();
+            request.put("field", "$embeddings");
+            request.put("op", "set");
+            request.put("value", embeddingsSet);
+            request.put("valueType", "mapValue");
+            updatedFormat.add(request);
+        }
+        if (!embeddingsDelete.isEmpty()) {
+            HashMap<String, Object> request = new HashMap<>();
+            request.put("field", "$embeddings");
+            request.put("op", "delete");
+            request.put("value", embeddingsDelete);
+            request.put("valueType", "arrayValue");
+            updatedFormat.add(request);
+        }
+
+        Map<String, Object> filteredUpdates = filterOutEmbeddingInputs(updates);
+
+        filteredUpdates.forEach((key, value) -> {
             HashMap<String, Object> request = new HashMap<>();
             request.put("field", key);
             if (value instanceof FieldValue) {
@@ -565,6 +589,16 @@ class QueryHelper {
             } else {
                 if (isAddDoc) {
                     updateDoc(servertimestamp, doc, data);
+                    Map<String, Object> embeddingsSet = extractEmbeddingsSetMap(doc);
+                    List<String> embeddingsDelete = extractEmbeddingsDeleteKeys(doc);
+                    if (!embeddingsDelete.isEmpty()) {
+                        throw new OsbdtException("deleteVector() is not supported in addDoc/set create payload. Use update/set merge contexts.");
+                    }
+                    if (!embeddingsSet.isEmpty()) {
+                        Map<String, Object> filteredDoc = filterOutEmbeddingInputs(doc);
+                        filteredDoc.put("$embeddings", embeddingsSet);
+                        doc = new HashMap<>(filteredDoc);
+                    }
                     payload.put("processedData", doc);
                     payload.put("servertimestamp", servertimestamp);
                 }
@@ -577,6 +611,85 @@ class QueryHelper {
             OsbdtLogger.d("Error in creating updated payload " + e.getMessage());
         }
         return updatedData;
+    }
+
+    private boolean isDenseEmbeddingList(Object value) {
+        if (!(value instanceof List<?>)) {
+            return false;
+        }
+        for (Object item : (List<?>) value) {
+            if (!(item instanceof Number)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isEmbeddingInput(Object value) {
+        return value instanceof DenseEmbedding || value instanceof SparseEmbedding || isDenseEmbeddingList(value);
+    }
+
+    private Map<String, Object> normalizeEmbedding(Object value) {
+        HashMap<String, Object> embedding = new HashMap<>();
+        if (value instanceof DenseEmbedding) {
+            DenseEmbedding dense = (DenseEmbedding) value;
+            VectorValidators.validateDenseVector(dense.getValues(), "Embedding values must be a numeric array.");
+            embedding.put("type", "dense");
+            embedding.put("values", dense.getValues());
+            return embedding;
+        }
+        if (value instanceof SparseEmbedding) {
+            SparseEmbedding sparse = (SparseEmbedding) value;
+            VectorValidators.validateSparseEmbedding(sparse);
+            embedding.put("type", "sparse");
+            embedding.put("dimension", sparse.getDimension());
+            embedding.put("indices", sparse.getIndices());
+            embedding.put("values", sparse.getValues());
+            return embedding;
+        }
+        List<Double> denseValues = new ArrayList<>();
+        for (Object item : (List<?>) value) {
+            denseValues.add(((Number) item).doubleValue());
+        }
+        VectorValidators.validateDenseVector(denseValues, "Embedding values must be a numeric array.");
+        embedding.put("type", "dense");
+        embedding.put("values", denseValues);
+        return embedding;
+    }
+
+    private Map<String, Object> extractEmbeddingsSetMap(@NonNull Map<String, Object> input) {
+        HashMap<String, Object> setMap = new HashMap<>();
+        for (Map.Entry<String, Object> entry : input.entrySet()) {
+            if (isEmbeddingInput(entry.getValue())) {
+                setMap.put(entry.getKey(), normalizeEmbedding(entry.getValue()));
+            }
+        }
+        return setMap;
+    }
+
+    private List<String> extractEmbeddingsDeleteKeys(@NonNull Map<String, Object> input) {
+        List<String> keys = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : input.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof FieldValue &&
+                    ((FieldValue) value).getOperation() == FieldValue.Operation.DELETE_VECTOR) {
+                keys.add(entry.getKey());
+            }
+        }
+        return keys;
+    }
+
+    private Map<String, Object> filterOutEmbeddingInputs(@NonNull Map<String, Object> input) {
+        HashMap<String, Object> filtered = new HashMap<>();
+        for (Map.Entry<String, Object> entry : input.entrySet()) {
+            Object value = entry.getValue();
+            boolean isDeleteVector = value instanceof FieldValue
+                    && ((FieldValue) value).getOperation() == FieldValue.Operation.DELETE_VECTOR;
+            if (!isEmbeddingInput(value) && !isDeleteVector) {
+                filtered.put(entry.getKey(), value);
+            }
+        }
+        return filtered;
     }
 
     /**

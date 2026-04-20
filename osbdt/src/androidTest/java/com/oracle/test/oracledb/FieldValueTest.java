@@ -68,6 +68,13 @@ public class FieldValueTest {
     }
 
     @Test
+    public void testDeleteVector() {
+        FieldValue fieldValue = FieldValue.deleteVector();
+
+        assertNotNull("FieldValue deleteVector should not be null", fieldValue);
+    }
+
+    @Test
     public void testIncrementWithLong() {
         FieldValue fieldValue = FieldValue.increment(10L);
 
@@ -134,6 +141,15 @@ public class FieldValueTest {
         FieldValue fieldValue2 = FieldValue.serverTimestamp();
 
         assertFalse("Different operations should not be equal", fieldValue1.equals(fieldValue2));
+    }
+
+    @Test
+    public void testEqualsDeleteVectorOperations() {
+        FieldValue fieldValue1 = FieldValue.deleteVector();
+        FieldValue fieldValue2 = FieldValue.deleteVector();
+
+        assertTrue("DeleteVector operations should be equal", fieldValue1.equals(fieldValue2));
+        assertEquals("DeleteVector hashCode should match", fieldValue1.hashCode(), fieldValue2.hashCode());
     }
 
     @Test
