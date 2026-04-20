@@ -626,7 +626,7 @@ class QueryHelper {
     }
 
     private boolean isEmbeddingInput(Object value) {
-        return value instanceof DenseEmbedding || value instanceof SparseEmbedding || isDenseEmbeddingList(value);
+        return value instanceof DenseEmbedding || value instanceof SparseEmbedding;
     }
 
     private Map<String, Object> normalizeEmbedding(Object value) {
@@ -647,13 +647,6 @@ class QueryHelper {
             embedding.put("values", sparse.getValues());
             return embedding;
         }
-        List<Double> denseValues = new ArrayList<>();
-        for (Object item : (List<?>) value) {
-            denseValues.add(((Number) item).doubleValue());
-        }
-        VectorValidators.validateDenseVector(denseValues, "Embedding values must be a numeric array.");
-        embedding.put("type", "dense");
-        embedding.put("values", denseValues);
         return embedding;
     }
 
