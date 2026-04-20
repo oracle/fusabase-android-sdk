@@ -64,7 +64,11 @@ public class FieldValue {
         /**
          * Operation to set a field to the server's current timestamp.
          */
-        SERVER_TIMESTAMP("servertimestamp");
+        SERVER_TIMESTAMP("servertimestamp"),
+        /**
+         * Operation to delete a vector embedding key.
+         */
+        DELETE_VECTOR("deleteVector");
 
         /**
          * The string representation of this operation.
@@ -198,6 +202,20 @@ public class FieldValue {
         OsbdtLogger.d("FieldValue.serverTimestamp called");
         FieldValue result = new FieldValue(Operation.SERVER_TIMESTAMP, new Object[]{});
         OsbdtLogger.d("FieldValue.serverTimestamp created FieldValue for SERVER_TIMESTAMP operation");
+        return result;
+    }
+
+    /**
+     * Returns a sentinel value for use with vector update operations.
+     * Instructs the server to delete the corresponding key from $embeddings in v2 APIs.
+     *
+     * @return a FieldValue representing the vector deletion operation
+     */
+    @NonNull
+    public static FieldValue deleteVector() {
+        OsbdtLogger.d("FieldValue.deleteVector called");
+        FieldValue result = new FieldValue(Operation.DELETE_VECTOR, new Object[]{});
+        OsbdtLogger.d("FieldValue.deleteVector created FieldValue for DELETE_VECTOR operation");
         return result;
     }
 

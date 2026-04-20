@@ -85,6 +85,18 @@ public class Query extends Reference {
      * Filter conditions.
      */
     final List<Filter> conditions;
+    /**
+     * Vector similarity search field (v2 only).
+     */
+    String vectorSearchField;
+    /**
+     * Vector search query payload (v2 only).
+     */
+    VectorSearchQuery vectorSearchQuery;
+    /**
+     * Vector search options (v2 only).
+     */
+    VectorSearchOptions vectorSearchOptions;
 
     final boolean isColGroup;
 
@@ -184,6 +196,9 @@ public class Query extends Reference {
         this.conditions = new ArrayList<>();
         this.joins = new ArrayList<>();
         this.explicitOrder = new ArrayList<>();
+        this.vectorSearchField = null;
+        this.vectorSearchQuery = null;
+        this.vectorSearchOptions = null;
         this.limit = 0;
         this.rt = 0;
         this.querySnap = null;
@@ -207,6 +222,9 @@ public class Query extends Reference {
         newQuery.columns.addAll(this.columns);
         newQuery.limit = this.limit;
         newQuery.conditions.addAll(this.conditions);
+        newQuery.vectorSearchField = this.vectorSearchField;
+        newQuery.vectorSearchQuery = this.vectorSearchQuery;
+        newQuery.vectorSearchOptions = this.vectorSearchOptions;
         return newQuery;
     }
 
@@ -437,7 +455,10 @@ public class Query extends Reference {
                     && this.path.equals(query.path)
                     && this.limit == query.limit
                     && this.explicitOrder.equals(query.explicitOrder)
-                    && this.conditions.equals(query.conditions);
+                    && this.conditions.equals(query.conditions)
+                    && Objects.equals(this.vectorSearchField, query.vectorSearchField)
+                    && Objects.equals(this.vectorSearchQuery, query.vectorSearchQuery)
+                    && Objects.equals(this.vectorSearchOptions, query.vectorSearchOptions);
         }
         return false;
     }
@@ -449,7 +470,8 @@ public class Query extends Reference {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(aggregate, joins, path, limit, explicitOrder, conditions);
+        return Objects.hash(aggregate, joins, path, limit, explicitOrder, conditions,
+                vectorSearchField, vectorSearchQuery, vectorSearchOptions);
     }
 
     /**
@@ -650,6 +672,51 @@ public class Query extends Reference {
             payloadBuilder.add("joins", Json.createObjectBuilder().add("view_name", this.joins.get(this.joins.size()-1)));
         }
 
+        if ("2.0".equals(this.oradb.getApp().getOptions().getApiVersion())
+                && this.vectorSearchField != null
+                && this.vectorSearchQuery != null) {
+            JsonObjectBuilder queryBuilder = Json.createObjectBuilder();
+            if (this.vectorSearchQuery.getVector() != null) {
+                JsonArrayBuilder dense = Json.createArrayBuilder();
+                for (Double value : this.vectorSearchQuery.getVector()) {
+                    dense.add(value);
+                }
+                queryBuilder.add("vector", dense);
+            }
+            if (this.vectorSearchQuery.getSparse() != null) {
+                SparseEmbedding sparseEmbedding = this.vectorSearchQuery.getSparse();
+                JsonArrayBuilder indices = Json.createArrayBuilder();
+                for (Integer idx : sparseEmbedding.getIndices()) {
+                    indices.add(idx);
+                }
+                JsonArrayBuilder values = Json.createArrayBuilder();
+                for (Double val : sparseEmbedding.getValues()) {
+                    values.add(val);
+                }
+                queryBuilder.add("sparse", Json.createObjectBuilder()
+                        .add("type", "sparse")
+                        .add("dimension", sparseEmbedding.getDimension())
+                        .add("indices", indices)
+                        .add("values", values));
+            }
+
+            JsonObjectBuilder vectorSearchBuilder = Json.createObjectBuilder()
+                    .add("field", this.vectorSearchField)
+                    .add("query", queryBuilder);
+            if (this.vectorSearchOptions != null) {
+                if (this.vectorSearchOptions.getMetric() != null) {
+                    vectorSearchBuilder.add("metric", this.vectorSearchOptions.getMetric().name());
+                }
+                if (this.vectorSearchOptions.getTopK() != null) {
+                    vectorSearchBuilder.add("topK", this.vectorSearchOptions.getTopK());
+                }
+                if (this.vectorSearchOptions.getThreshold() != null) {
+                    vectorSearchBuilder.add("threshold", this.vectorSearchOptions.getThreshold());
+                }
+            }
+            payloadBuilder.add("vectorSearch", vectorSearchBuilder);
+        }
+
         return payloadBuilder.build();
     }
 
@@ -820,6 +887,39 @@ public class Query extends Reference {
         Query updatedQuery = this.deepCopy();
         updatedQuery.conditions.add(filter);
         return updatedQuery;
+    }
+
+    /**
+     * Adds a vector similarity query constraint for v2 runQuery.
+     *
+     * @param field vector field name
+     * @param query dense or sparse vector query payload
+     * @param options optional metric/topK/threshold
+     * @return a new Query with vector search applied
+     */
+    @NonNull
+    public Query vectorSearch(@NonNull String field,
+                              @NonNull VectorSearchQuery query,
+                              @Nullable VectorSearchOptions options) {
+        Objects.requireNonNull(field, "Invalid vector search field");
+        Objects.requireNonNull(query, "Invalid vector search query");
+        VectorValidators.validateVectorSearchQuery(query);
+        VectorValidators.validateVectorSearchOptions(options);
+
+        Query updatedQuery = this.deepCopy();
+        updatedQuery.vectorSearchField = field;
+        updatedQuery.vectorSearchQuery = query;
+        updatedQuery.vectorSearchOptions = options;
+        return updatedQuery;
+    }
+
+    /**
+     * Adds a vector similarity query constraint for v2 runQuery.
+     */
+    @NonNull
+    public Query vectorSearch(@NonNull String field,
+                              @NonNull VectorSearchQuery query) {
+        return vectorSearch(field, query, null);
     }
 
     /**
