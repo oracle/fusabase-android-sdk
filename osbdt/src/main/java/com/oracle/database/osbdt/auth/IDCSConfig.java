@@ -51,8 +51,6 @@ class IDCSConfig extends Config {
     @NonNull
     public final String clientSecret;
     @NonNull
-    public final String selfRegistrationProfile;
-    @NonNull
     public final String idcsDomainURL;
     IDCSConfig(@NonNull String appId,
                @NonNull String projectId,
@@ -61,12 +59,11 @@ class IDCSConfig extends Config {
                @NonNull String clientId,
                @NonNull String domainURL,
                @NonNull String idcsDomainURL,
-               @NonNull String selfRegistrationProfile) {
+               @NonNull String unusedSelfRegistrationProfile) {
         super(authType, appId, projectId, domainURL);
         this.idcsDomainURL = idcsDomainURL;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.selfRegistrationProfile = selfRegistrationProfile;
     }
 
     @NonNull

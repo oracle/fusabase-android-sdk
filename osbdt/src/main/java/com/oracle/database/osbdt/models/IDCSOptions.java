@@ -36,19 +36,17 @@ import java.util.Objects;
 public class IDCSOptions {
     private final String clientId;
     private final String clientSecret;
-    private final String selfRegistrationProfile;
     private final String domainURL;
 
     public IDCSOptions(Builder builder) {
         this.clientId = builder.clientId;
         this.clientSecret = builder.clientSecret;
-        this.selfRegistrationProfile = builder.selfRegistrationProfile;
         this.domainURL = builder.domainURL;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(clientId, clientSecret, selfRegistrationProfile, domainURL);
+        return Objects.hash(clientId, clientSecret, domainURL);
     }
 
     @Override
@@ -62,7 +60,6 @@ public class IDCSOptions {
         IDCSOptions that = (IDCSOptions) obj;
         return Objects.equals(clientId, that.clientId) &&
                 Objects.equals(clientSecret, that.clientSecret) &&
-                Objects.equals(selfRegistrationProfile, that.selfRegistrationProfile) &&
                 Objects.equals(domainURL, that.domainURL);
     }
 
@@ -87,16 +84,6 @@ public class IDCSOptions {
     }
 
     /**
-     * Gets the self-registration profile.
-     *
-     * @return The self-registration profile.
-     */
-    @NonNull
-    public String getSelfRegistrationProfile() {
-        return this.selfRegistrationProfile;
-    }
-
-    /**
      * Gets the IDCS Domain URL.
      *
      * @return The IDCS domain URL.
@@ -112,7 +99,6 @@ public class IDCSOptions {
     public static class Builder {
         private String clientId;
         private String clientSecret;
-        private String selfRegistrationProfile;
         private String domainURL;
 
         /**
@@ -134,17 +120,6 @@ public class IDCSOptions {
          */
         public Builder setClientSecret(@NonNull String clientSecret) {
             this.clientSecret = clientSecret;
-            return this;
-        }
-
-        /**
-         * Sets the self-registration profile.
-         *
-         * @param selfRegistrationProfile The self-registration profile.
-         * @return This builder instance.
-         */
-        public Builder setSelfRegistrationProfile(@NonNull String selfRegistrationProfile) {
-            this.selfRegistrationProfile = selfRegistrationProfile;
             return this;
         }
 

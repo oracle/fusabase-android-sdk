@@ -557,50 +557,36 @@ class IDCSAuthHelper extends AuthHelper {
     protected JsonObject registerUser(@NonNull String email,
                                       @NonNull String password) throws OsbdtException {
 
-        OsbdtLogger.d(TAG, "Sending request to register user at idcs.");
-
-        this.bearerToken = (this.bearerToken == null ? getBearerToken() : this.bearerToken);
+        OsbdtLogger.d(TAG, "Sending request to register user via ORDS (IDCS useradd).");
 
         JsonObject payload = Json.createObjectBuilder()
-                .add("schemas", Json.createArrayBuilder()
-                        .add("urn:ietf:params:scim:schemas:core:2.0:User")
-                        .add("urn:ietf:params:scim:schemas:oracle:idcs:extension:selfRegistration:User")
-                        .build())
-                .add("userName", email)
-                .add("name", Json.createObjectBuilder()
-                        .add("givenName", "-")
-                        .add("familyName", "-").build())
+                .add("first_name", "-")
+                .add("last_name", "-")
+                .add("email", email)
                 .add("password", password)
-                .add("emails", Json.createArrayBuilder()
-                        .add(Json.createObjectBuilder()
-                                .add("value", email)
-                                .add("type", "work")
-                                .add("primary", true)
-                                .build())
-                        .build())
-                .add("urn:ietf:params:scim:schemas:oracle:idcs:extension:selfRegistration:User",
-                        Json.createObjectBuilder().add("selfRegistrationProfile",
-                                Json.createObjectBuilder().add("value", this.config.selfRegistrationProfile)
-                                        .build())
-                                .add("consentGranted", true)
-                                .build())
                 .build();
 
         HttpRequestHelper requestHelper = new HttpRequestHelper();
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/scim+json;charset=UTF-8");
-        headers.put("Authorization", String.format("Bearer %s", bearerToken.getToken()));
 
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getIdcsDomainURL(),
-                ADMIN_PATH,
-                V1_PATH,
-                ME_PATH),
+        Map<String, String> queryParameters = new HashMap<>();
+        queryParameters.put("apiKey", this.config.getAppId());
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+
+        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
+                        IDCSConfig.UNDERSCORE_PATH,
+                        IDCSConfig.BAAS_SERVICES_PATH,
+                        IDCSConfig.IDM_PATH,
+                        IDCSConfig.IDCS_AUTH_TYPE,
+                        this.config.getProjectId(),
+                        IDCSConfig.SELF_REGISTER_EP),
                 "POST",
                 headers,
+                queryParameters,
                 payload.toString());
 
-        HttpResponse response = null;
-
+        HttpResponse response;
         try {
             response = requestHelper.executeRequest();
         } catch (OsbdtException e) {
@@ -609,17 +595,32 @@ class IDCSAuthHelper extends AuthHelper {
         }
 
         if (response.getStatus()) {
-            OsbdtLogger.i(TAG, "Registered user successfully a idcs.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
+            // Expected contract: 200 + {"message":"User Registered"}
+            if (response.getResponse() != null && !response.getResponse().isEmpty()) {
+                try (JsonReader reader = Json.createReader(new StringReader(response.getResponse()))) {
+                    JsonObject result = reader.readObject();
+                    if (!"User Registered".equals(result.getString("message", ""))) {
+                        OsbdtLogger.w(TAG, "Unexpected useradd success payload: " + result);
+                    }
+                } catch (Exception parseException) {
+                    OsbdtLogger.w(TAG, "Unable to parse useradd success payload: " + parseException.getMessage());
+                }
+            }
+
+            // Maintain existing SDK behavior: sign in after successful registration
             return this.authenticateUser(email, password);
         }
 
-        OsbdtLogger.e(TAG, "Failed to register user at" +
-                " idcs with response code " + response.getCode() + " with the following error " +
-                response.getError() + " " + response.getResponse());
-        throw new OsbdtException(response.getError());
+        // Map weak password (if backend uses 400)
+        if (response.getCode() == 400) {
+            throw new OsbdtAuthWeakPasswordException(
+                    OsbdtAuthException.Code.INVALID_ARGUMENT.toString(),
+                    "The password provided does not meet security requirements. Please choose a stronger password.");
+        }
+
+        OsbdtLogger.e(TAG, "Failed to register user via ORDS (IDCS useradd) with response code "
+                + response.getCode() + " with the following error " + response.getError());
+        throw new OsbdtException("User registration failed. Please try again later.");
     }
 
     @NonNull

@@ -210,15 +210,6 @@ public class Options {
     }
 
     /**
-     * Gets the self-registration profile.
-     *
-     * @return The self-registration profile.
-     */
-    public String getSelfRegistrationProfile() {
-        return this.idcsOptions != null ? this.idcsOptions.getSelfRegistrationProfile() : "";
-    }
-
-    /**
      * Gets the schema.
      *
      * @return The schema.
