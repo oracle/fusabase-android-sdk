@@ -16,7 +16,7 @@
 .externalNativeBuild
 .cxx
 local.properties
-/osbdt-plugin/build/
-/osbdt-plugin/bin/
-/osbdt/build/
+/fusabase-gradle-plugin/build/
+/fusabase-gradle-plugin/bin/
+/fusabase/build/
 memory-bank/vector-api-implementation-plan.md

@@ -1,11 +1,11 @@
-# OSBDT Android SDK
+# FUSABASE Android SDK
 
 Oracle Database Backend as a Service (BaaS) SDK for Android.
 
 - Authentication (email/password and federated providers), user profile APIs
 - OracleDB document APIs (collections, documents, queries, duality views, transactions, batch)
 - Storage APIs (upload/download, metadata, listing)
-- Automatic initialization from osbdt-config.json via a Gradle plugin
+- Automatic initialization from fusabase-config.json via a Gradle plugin
 
 License: Dual-licensed under UPL 1.0 and Apache 2.0. See LICENSE.txt.
 
@@ -43,26 +43,26 @@ Add the library dependency to your app/library module:
 build.gradle.kts (module)
 ```kotlin
 dependencies {
-    implementation("com.oracle.database.osbdt:osbdt-android-sdk:{version}")
+    implementation("com.oracle.mobile:fusabase:{version}")
 }
 ```
 
 ## Third-Party Dependencies
 
-The OSBDT Android SDK includes the following third-party dependencies:
+The FUSABASE Android SDK includes the following third-party dependencies:
 
 - `androidx.appcompat:appcompat:1.7.0` - Android AppCompat library
 - `androidx.browser:browser:1.8.0` - Android Browser library for custom tabs
 - `com.squareup.okhttp3:okhttp:5.1.0` - HTTP client for network operations
 - `org.glassfish:jakarta.json:2.0.1` - JSON processing library
 
-These dependencies are automatically included when you add the OSBDT SDK to your project and do not require separate declaration.
+These dependencies are automatically included when you add the FUSABASE SDK to your project and do not require separate declaration.
 
-## Configuration (osbdt-config.json)
+## Configuration (fusabase-config.json)
 
-Place an osbdt-config.json file in your app module root (same level as its build.gradle.kts). The OSBDT Gradle plugin reads it and generates res/values/osbdt.generated.xml. These resources are used for auto-initialization.
+Place an fusabase-config.json file in your app module root (same level as its build.gradle.kts). The FUSABASE Gradle plugin reads it and generates res/values/fusabase.generated.xml. These resources are used for auto-initialization.
 
-Example osbdt-config.json
+Example fusabase-config.json
 ```json
 {
   "ords_host": "https://your-ords.example.com/ords/",
@@ -88,14 +88,14 @@ Example osbdt-config.json
 }
 ```
 
-## Apply the OSBDT config Gradle plugin
+## Apply the FUSABASE config Gradle plugin
 
-This plugin converts osbdt-config.json into Android string resources at build time.
+This plugin converts fusabase-config.json into Android string resources at build time.
 
 build.gradle.kts (app module)
 ```kotlin
 plugins {
-    id("com.oracle.database.osbdt.gradle-config")
+    id("com.oracle.mobile.fusabase-gradle-plugin")
 }
 ```
 build.gradle.kts (project)
@@ -106,7 +106,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.oracle.database.osbdt:gradle-config:{version}")
+        classpath("com.oracle.mobile:fusabase-gradle-plugin:{version}")
     }
 }
 ```
@@ -114,28 +114,28 @@ Alternative (legacy) classpath approach if you cannot use pluginManagement:
 
 build.gradle.kts (app module)
 ```kotlin
-apply(plugin = "com.oracle.database.osbdt.gradle-config")
+apply(plugin = "com.oracle.mobile.fusabase-gradle-plugin")
 ```
 
 ## Quickstart
 
 Auto-initialization:
-- The SDK initializes automatically via OsbdtInitProvider using values generated from osbdt-config.json.
+- The SDK initializes automatically via FusabaseInitProvider using values generated from fusabase-config.json.
 - For most apps, no code is required.
 
 Manual initialization (if needed):
 ```java
-import com.oracle.database.osbdt.OsbdtApp;
+import com.oracle.mobile.fusabase.FusabaseApp;
 
-OsbdtApp app = OsbdtApp.initializeApp(applicationContext); // reads generated resources
+FusabaseApp app = FusabaseApp.initializeApp(applicationContext); // reads generated resources
 ```
 
 Initialize with explicit options (advanced):
 ```java
-import com.oracle.database.osbdt.OsbdtApp;
-import com.oracle.database.osbdt.OsbdtOptions;
+import com.oracle.mobile.fusabase.FusabaseApp;
+import com.oracle.mobile.fusabase.FusabaseOptions;
 
-OsbdtOptions options = new OsbdtOptions.Builder()
+FusabaseOptions options = new FusabaseOptions.Builder()
     .setOrdsHost("https://your-ords.example.com/ords/")
     .setProjectId("your-project-id")
     .setAppId("your-app-id")
@@ -146,20 +146,20 @@ OsbdtOptions options = new OsbdtOptions.Builder()
     .setUseSocket(true)
     .build();
 
-OsbdtApp app = OsbdtApp.initializeApp(applicationContext, options);
+FusabaseApp app = FusabaseApp.initializeApp(applicationContext, options);
 ```
 
 ## Usage
 
 OracleDB
 ```java
-import com.oracle.database.osbdt.OsbdtApp;
-import com.oracle.database.osbdt.oracledb.OsbdtOracledb;
-import com.oracle.database.osbdt.oracledb.CollectionReference;
-import com.oracle.database.osbdt.oracledb.DocumentReference;
+import com.oracle.mobile.fusabase.FusabaseApp;
+import com.oracle.mobile.fusabase.oracledb.FusabaseOracledb;
+import com.oracle.mobile.fusabase.oracledb.CollectionReference;
+import com.oracle.mobile.fusabase.oracledb.DocumentReference;
 
-OsbdtApp app = OsbdtApp.getInstance();
-OsbdtOracledb db = OsbdtOracledb.getInstance(app);
+FusabaseApp app = FusabaseApp.getInstance();
+FusabaseOracledb db = FusabaseOracledb.getInstance(app);
 
 // References
 CollectionReference cities = db.collection("cities");
@@ -171,7 +171,7 @@ CollectionReference q = db.collection("cities"); // add where/orderBy in your AP
 
 Transactions
 ```java
-import com.oracle.database.osbdt.task.Task;
+import com.oracle.mobile.fusabase.task.Task;
 
 Task<String> resultTask = db.runTransaction(txn -> {
     // Read/write via txn with your domain-specific APIs
@@ -181,9 +181,9 @@ Task<String> resultTask = db.runTransaction(txn -> {
 
 Batch
 ```java
-import com.oracle.database.osbdt.oracledb.*;
+import com.oracle.mobile.fusabase.oracledb.*;
 
-OsbdtOracledb db = OsbdtOracledb.getInstance(app);
+FusabaseOracledb db = FusabaseOracledb.getInstance(app);
 WriteBatch batch = db.batch();
 
 batch.set(db.collection("cities").document("SF"),
@@ -196,24 +196,24 @@ batch.commit();
 
 Auth
 ```java
-import com.oracle.database.osbdt.auth.*;
+import com.oracle.mobile.fusabase.auth.*;
 
-OsbdtAuth auth = OsbdtAuth.getInstance(app);
+FusabaseAuth auth = FusabaseAuth.getInstance(app);
 
 // Sign up
 auth.createUserWithEmailAndPassword("user@example.com", "password123")
     .addOnSuccessListener(result -> {
-        OsbdtUser user = result.getUser();
+        FusabaseUser user = result.getUser();
     });
 
 // Sign in
 auth.signInWithEmailAndPassword("user@example.com", "password123")
     .addOnSuccessListener(result -> {
-        OsbdtUser user = result.getUser();
+        FusabaseUser user = result.getUser();
     });
 
 // Get current user
-OsbdtUser user = auth.getCurrentUser();
+FusabaseUser user = auth.getCurrentUser();
 String email = user.getEmail();
 
 // Sign out
@@ -222,7 +222,7 @@ auth.signOut();
 
 Storage
 ```java
-import com.oracle.database.osbdt.storage.*;
+import com.oracle.mobile.fusabase.storage.*;
 
 Storage storage = Storage.getInstance(app);
 StorageReference fileRef = storage.getReference().child("images/photo.jpg");
@@ -257,37 +257,37 @@ storage.getReference().child("images/").listAll()
 The SDK auto-registers a content provider:
 ```xml
 <provider
-    android:name="com.oracle.database.osbdt.OsbdtInitProvider"
-    android:authorities="${applicationId}.OsbdtInitProvider"
+    android:name="com.oracle.mobile.fusabase.FusabaseInitProvider"
+    android:authorities="${applicationId}.FusabaseInitProvider"
     android:exported="false"
     android:initOrder="100"/>
 ```
 
 For social login via redirect, add the activity and scheme (if used):
 ```xml
-<activity android:name="com.oracle.database.osbdt.auth.SocialLoginActivity"
+<activity android:name="com.oracle.mobile.fusabase.auth.SocialLoginActivity"
     android:exported="true">
     <intent-filter>
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="${osbdt_scheme}" />
+        <data android:scheme="${fusabase_scheme}" />
     </intent-filter>
 </activity>
 ```
 
 ## ProGuard / R8
 
-No special rules required by default. If you enable obfuscation, keep public models/APIs you reflect on. See osbdt/proguard-rules.pro for project defaults.
+No special rules required by default. If you enable obfuscation, keep public models/APIs you reflect on. See fusabase/proguard-rules.pro for project defaults.
 
 ## Testing and Coverage
 
 Instrumented tests and coverage:
 ```bash
 ./gradlew connectedDebugAndroidTest
-./gradlew :osbdt:jacocoAndroidTestReport
+./gradlew :fusabase:jacocoAndroidTestReport
 ```
-Reports are generated under osbdt/build/reports/jacoco.
+Reports are generated under fusabase/build/reports/jacoco.
 
 ## Contributing
 
@@ -299,12 +299,12 @@ Please consult the [security guide](./SECURITY.md) for our responsible security 
 
 ## Troubleshooting
 
-- osbdt-config.json is not found … Please provide the config file in the app/ directory.
-  - Place osbdt-config.json at the app module root (same level as build.gradle.kts).
-- Cannot read osbdt-config.json. Please make sure that the file is not corrupted.
+- fusabase-config.json is not found … Please provide the config file in the app/ directory.
+  - Place fusabase-config.json at the app module root (same level as build.gradle.kts).
+- Cannot read fusabase-config.json. Please make sure that the file is not corrupted.
   - Validate JSON, ensure the file is readable.
 - Social login redirect not working:
-  - Add SocialLoginActivity and set osbdt_scheme via resources/config.
+  - Add SocialLoginActivity and set fusabase_scheme via resources/config.
 
 ## License
 Dual-licensed under the UPL 1.0 and Apache 2.0. See LICENSE.txt for details.
