@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OSBDT"
-include(":osbdt")
-include(":osbdt-plugin")
+rootProject.name = "FUSABASE"
+include(":fusabase")
+include(":fusabase-gradle-plugin")
