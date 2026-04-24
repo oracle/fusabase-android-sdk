@@ -46,7 +46,7 @@ publishing {
     publications {
         create<MavenPublication>("pluginMaven") {
             groupId = "com.oracle.mobile"
-            artifactId = "gradle-config"
+            artifactId = "fusabase-gradle-plugin"
             version = project.version.toString()
 
             pom.withXml {

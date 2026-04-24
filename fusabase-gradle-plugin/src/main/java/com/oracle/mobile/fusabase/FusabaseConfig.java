@@ -40,6 +40,9 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 
+/**
+ * Gradle plugin that reads fusabase-config.json and generates Android string resources.
+ */
 public class FusabaseConfig implements Plugin<Project> {
     @Override
     public void apply(Project project) {
