@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FUSABASE"
+rootProject.name = "fusabase"
 include(":fusabase")
 include(":fusabase-gradle-plugin")

@@ -1,4 +1,4 @@
-Oracle Simple Backend Developer Toolkit Third-Party License Information
+Oracle Backend for Firebase Third-Party License Information
 --------------------------------------
 
 This product contains third-party code. Oracle is required to provide the notices for that code.
