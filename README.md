@@ -1,6 +1,6 @@
 # FUSABASE Android SDK
 
-Oracle Database Backend as a Service (BaaS) SDK for Android.
+Oracle Backend for Firebase SDK for Android.
 
 - Authentication (email/password and federated providers), user profile APIs
 - OracleDB document APIs (collections, documents, queries, duality views, transactions, batch)
@@ -82,8 +82,7 @@ Example fusabase-config.json
   "idcs_options": {
     "domain_url": "https://idcs-guid.oraclecloud.com",
     "clientId": "your-client-id",
-    "clientSecret": "your-client-secret",
-    "selfRegistrationProfile": "Default"
+    "clientSecret": "your-client-secret"
   }
 }
 ```
