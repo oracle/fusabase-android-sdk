@@ -31,15 +31,11 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.oracle.mobile.fusabase.auth.GetTokenResult;
-import com.oracle.mobile.fusabase.auth.FusabaseAuth;
 import com.oracle.mobile.fusabase.FusabaseException;
 import com.oracle.mobile.fusabase.FusabaseOptions;
 import com.oracle.mobile.fusabase.http.HttpRequestHelper;
 import com.oracle.mobile.fusabase.http.HttpResponse;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
-import com.oracle.mobile.fusabase.task.Task;
-import com.oracle.mobile.fusabase.task.Tasks;
 import com.oracle.mobile.fusabase.utils.Utils;
 
 import java.io.StringReader;
@@ -626,20 +622,20 @@ class QueryHelper {
     }
 
     private boolean isEmbeddingInput(Object value) {
-        return value instanceof DenseEmbedding || value instanceof SparseEmbedding || isDenseEmbeddingList(value);
+        return value instanceof DenseVector || value instanceof SparseVector || isDenseEmbeddingList(value);
     }
 
     private Map<String, Object> normalizeEmbedding(Object value) {
         HashMap<String, Object> embedding = new HashMap<>();
-        if (value instanceof DenseEmbedding) {
-            DenseEmbedding dense = (DenseEmbedding) value;
+        if (value instanceof DenseVector) {
+            DenseVector dense = (DenseVector) value;
             VectorValidators.validateDenseVector(dense.getValues(), "Embedding values must be a numeric array.");
             embedding.put("type", "dense");
             embedding.put("values", dense.getValues());
             return embedding;
         }
-        if (value instanceof SparseEmbedding) {
-            SparseEmbedding sparse = (SparseEmbedding) value;
+        if (value instanceof SparseVector) {
+            SparseVector sparse = (SparseVector) value;
             VectorValidators.validateSparseEmbedding(sparse);
             embedding.put("type", "sparse");
             embedding.put("dimension", sparse.getDimension());

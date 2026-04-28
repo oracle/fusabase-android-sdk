@@ -684,18 +684,18 @@ public class Query extends Reference {
                 queryBuilder.add("vector", dense);
             }
             if (this.vectorSearchQuery.getSparse() != null) {
-                SparseEmbedding sparseEmbedding = this.vectorSearchQuery.getSparse();
+                SparseVector sparseVector = this.vectorSearchQuery.getSparse();
                 JsonArrayBuilder indices = Json.createArrayBuilder();
-                for (Integer idx : sparseEmbedding.getIndices()) {
+                for (Integer idx : sparseVector.getIndices()) {
                     indices.add(idx);
                 }
                 JsonArrayBuilder values = Json.createArrayBuilder();
-                for (Double val : sparseEmbedding.getValues()) {
+                for (Double val : sparseVector.getValues()) {
                     values.add(val);
                 }
                 queryBuilder.add("sparse", Json.createObjectBuilder()
                         .add("type", "sparse")
-                        .add("dimension", sparseEmbedding.getDimension())
+                        .add("dimension", sparseVector.getDimension())
                         .add("indices", indices)
                         .add("values", values));
             }

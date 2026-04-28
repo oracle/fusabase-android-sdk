@@ -12,9 +12,9 @@ import java.util.Objects;
 public class VectorSearchQuery {
 
     private final List<Double> vector;
-    private final SparseEmbedding sparse;
+    private final SparseVector sparse;
 
-    private VectorSearchQuery(@Nullable List<Double> vector, @Nullable SparseEmbedding sparse) {
+    private VectorSearchQuery(@Nullable List<Double> vector, @Nullable SparseVector sparse) {
         this.vector = vector;
         this.sparse = sparse;
     }
@@ -26,7 +26,7 @@ public class VectorSearchQuery {
     }
 
     @NonNull
-    public static VectorSearchQuery sparse(@NonNull SparseEmbedding sparse) {
+    public static VectorSearchQuery sparse(@NonNull SparseVector sparse) {
         VectorValidators.validateSparseEmbedding(sparse);
         return new VectorSearchQuery(null, sparse);
     }
@@ -37,7 +37,7 @@ public class VectorSearchQuery {
     }
 
     @Nullable
-    public SparseEmbedding getSparse() {
+    public SparseVector getSparse() {
         return sparse;
     }
 

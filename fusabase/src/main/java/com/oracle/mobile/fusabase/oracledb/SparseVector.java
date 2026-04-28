@@ -8,13 +8,13 @@ import java.util.Objects;
 /**
  * Represents a sparse embedding payload.
  */
-public class SparseEmbedding {
+public class SparseVector {
     private final String type;
     private final int dimension;
     private final List<Integer> indices;
     private final List<Double> values;
 
-    SparseEmbedding(int dimension, @NonNull List<Integer> indices, @NonNull List<Double> values) {
+    SparseVector(int dimension, @NonNull List<Integer> indices, @NonNull List<Double> values) {
         this.type = "sparse";
         this.dimension = dimension;
         this.indices = indices;
@@ -43,8 +43,8 @@ public class SparseEmbedding {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof SparseEmbedding)) return false;
-        SparseEmbedding that = (SparseEmbedding) o;
+        if (!(o instanceof SparseVector)) return false;
+        SparseVector that = (SparseVector) o;
         return dimension == that.dimension && Objects.equals(type, that.type) &&
                 Objects.equals(indices, that.indices) && Objects.equals(values, that.values);
     }
