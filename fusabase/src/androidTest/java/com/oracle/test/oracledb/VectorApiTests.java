@@ -98,8 +98,8 @@ public class vectorAPITests {
 
         Map<String, Object> updateMap = new HashMap<>();
         updateMap.put("text", "v2 vector doc");
-        updateMap.put("EMB", VectorValue.denseEmbedding(Arrays.asList(0.11, 0.22, 0.33, 0.44)));
-        updateMap.put("SP_EMB", VectorValue.sparseEmbedding(384, Arrays.asList(2, 5, 9), Arrays.asList(0.13, 0.23, 0.43)));
+        updateMap.put("EMB", VectorValue.denseVector(Arrays.asList(0.11, 0.22, 0.33, 0.44)));
+        updateMap.put("SP_EMB", VectorValue.sparseVector(384, Arrays.asList(2, 5, 9), Arrays.asList(0.13, 0.23, 0.43)));
         updateMap.put("SP_EMB_DELETE", FieldValue.deleteVector());
 
         Map<String, Object> payload = (Map<String, Object>) processUpdateData.invoke(queryHelper, updateMap);

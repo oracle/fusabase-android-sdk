@@ -12,16 +12,16 @@ public final class VectorValue {
     private VectorValue() {}
 
     @NonNull
-    public static DenseEmbedding denseEmbedding(@NonNull List<Double> values) {
-        VectorValidators.validateDenseVector(values, "denseEmbedding values must be a numeric array.");
-        return new DenseEmbedding(values);
+    public static DenseVector denseVector(@NonNull List<Double> values) {
+        VectorValidators.validateDenseVector(values, "denseVector values must be a numeric array.");
+        return new DenseVector(values);
     }
 
     @NonNull
-    public static SparseEmbedding sparseEmbedding(int dimension,
-                                                  @NonNull List<Integer> indices,
-                                                  @NonNull List<Double> values) {
-        SparseEmbedding sparse = new SparseEmbedding(dimension, indices, values);
+    public static SparseVector sparseVector(int dimension,
+                                            @NonNull List<Integer> indices,
+                                            @NonNull List<Double> values) {
+        SparseVector sparse = new SparseVector(dimension, indices, values);
         VectorValidators.validateSparseEmbedding(sparse);
         return sparse;
     }

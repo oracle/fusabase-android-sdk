@@ -22,7 +22,7 @@ final class VectorValidators {
         }
     }
 
-    static void validateSparseEmbedding(@NonNull SparseEmbedding sparse) {
+    static void validateSparseEmbedding(@NonNull SparseVector sparse) {
         if (sparse.getDimension() <= 0) {
             throw new IllegalArgumentException("Sparse embedding dimension must be an integer greater than 0.");
         }

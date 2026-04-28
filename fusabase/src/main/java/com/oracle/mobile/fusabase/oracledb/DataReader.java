@@ -88,8 +88,8 @@ class DataReader {
                         || value instanceof Long
                         || value instanceof Timestamp
                         || value instanceof FieldValue
-                        || value instanceof DenseEmbedding
-                        || value instanceof SparseEmbedding) {
+                        || value instanceof DenseVector
+                        || value instanceof SparseVector) {
                     // These primitive types and special objects are handled directly
                     updatedData.put(key, value);
                 } else if (value instanceof List) {
@@ -106,8 +106,8 @@ class DataReader {
                                 || item instanceof Long
                                 || item instanceof Timestamp
                                 || item instanceof FieldValue
-                                || item instanceof DenseEmbedding
-                                || item instanceof SparseEmbedding) {
+                                || item instanceof DenseVector
+                                || item instanceof SparseVector) {
                             return item;
                         } else if (item instanceof Map) {
                             return convertDataInHashMap(item);
