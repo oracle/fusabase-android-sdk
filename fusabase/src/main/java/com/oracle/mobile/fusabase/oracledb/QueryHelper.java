@@ -622,7 +622,7 @@ class QueryHelper {
     }
 
     private boolean isEmbeddingInput(Object value) {
-        return value instanceof DenseVector || value instanceof SparseVector || isDenseEmbeddingList(value);
+        return value instanceof DenseVector || value instanceof SparseVector;
     }
 
     private Map<String, Object> normalizeEmbedding(Object value) {

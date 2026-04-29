@@ -28,7 +28,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 
 @RunWith(AndroidJUnit4.class)
-public class vectorAPITests {
+public class VectorApiTests {
 
     @Test
     public void runQueryVectorSearchDensePayloadShape_matchesOpenApiContract() {

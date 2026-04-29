@@ -94,7 +94,7 @@ public class QueryTest {
         idcsOptionsBuilder.setClientId("44d4a5a58a80476e90389ab9f403db87");
         idcsOptionsBuilder.setClientSecret("idcscs-3a5ba1c4-b496-443d-ac9e-5efd7125d5c2");
         idcsOptionsBuilder.setDomainURL("https://idcs-360c1204d11f41d3836e7fb2f1769ca7.identity.oraclecloud.com");
-        idcsOptionsBuilder.setSelfRegistrationProfile("f336e6256b9644059663394fe75d7494");
+//        idcsOptionsBuilder.setSelfRegistrationProfile("f336e6256b9644059663394fe75d7494");
         optionsBuilder.setIDCSOptions(idcsOptionsBuilder.build());
         optionsBuilder.setOrdsHost("http://phoenix555379.dev3sub4phx.databasede3phx.oraclevcn.com:8080/ords/USER1/");
         optionsBuilder.setProjectId("43C68B185E9732FEE0631F965E641907");

@@ -226,14 +226,14 @@ public class regression {
 //                .setSelfRegistrationProfile("1941ffb49cae49d39473613b2ea2ca46")
 //                .setDomainURL("https://idcs-360c1204d11f41d3836e7fb2f1769ca7.identity.oraclecloud.com").build();
 //        optionsBuilder.setIDCSOptions(idcsOptions);
-        optionsBuilder.setProjectId("4C4AD5BD0A2961DCE0631F965E6402EA");
-        optionsBuilder.setAppId("4C4BFC2A5C6FCDA7E0631F965E64C814");
+        optionsBuilder.setProjectId("5083E5A69358CE9CE0631F965E646288");
+        optionsBuilder.setAppId("5085BAC8C52F74C4E0631F965E646039");
         optionsBuilder.setObjectType("dbfs");
         optionsBuilder.setSchema("USER1");
         optionsBuilder.setStorageBucket("dbfs_OQUHPBCVYAYTHHU");
         optionsBuilder.setApiVersion("2.0");
         optionsBuilder.setAppName("testapp");
-        optionsBuilder.setAuthId("4C4AD5D0268861EAE0631F965E6428E8");
+        optionsBuilder.setAuthId("5083E5BBEFEACEA7E0631F965E644CA8");
         optionsBuilder.setUseSocket(true);
         optionsBuilder.setUploadChunkSize(10);
         optionsBuilder.setAllowsSelfSignedCertificates(true);
@@ -16517,5 +16517,31 @@ public class regression {
 
         // Cleanup
         await(db.collection("users").document("Scott").delete());
+    }
+
+    @Test
+    public void testDualityViewDeleteDocument() throws Exception {
+        // Create a test document first
+        String[] collections = { "department_dv" };
+        addSecurityRule(collections);
+        DualityViewColReference deptCollection = db.dualityViewCollection("department_dv");
+        Map<String, Object> data = new HashMap<>();
+        data.put("_id", 78);
+        data.put("departmentName", "DELETE_T");
+        data.put("location", "DELETE_L");
+        data.put("employees", Collections.emptyList());
+
+        DualityViewDocReference docRef = await(deptCollection.add(data));
+
+        // Verify it exists
+        DocumentSnapshot beforeDelete = await(docRef.get());
+        assertTrue("Document should exist before delete", beforeDelete.exists());
+
+        // Delete it
+        await(docRef.delete());
+
+        // Verify it's gone
+        DocumentSnapshot afterDelete = await(docRef.get());
+        assertFalse("Document should not exist after delete", afterDelete.exists());
     }
 }
