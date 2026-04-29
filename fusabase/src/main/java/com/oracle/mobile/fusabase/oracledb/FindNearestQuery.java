@@ -7,28 +7,28 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a vector search query payload. Exactly one of dense or sparse must be set.
+ * Represents a find-nearest query payload. Exactly one of dense or sparse must be set.
  */
-public class VectorSearchQuery {
+public class FindNearestQuery {
 
     private final List<Double> vector;
     private final SparseVector sparse;
 
-    private VectorSearchQuery(@Nullable List<Double> vector, @Nullable SparseVector sparse) {
+    private FindNearestQuery(@Nullable List<Double> vector, @Nullable SparseVector sparse) {
         this.vector = vector;
         this.sparse = sparse;
     }
 
     @NonNull
-    public static VectorSearchQuery dense(@NonNull List<Double> vector) {
+    public static FindNearestQuery dense(@NonNull List<Double> vector) {
         VectorValidators.validateDenseVector(vector, "Vector search query.vector must be a numeric array.");
-        return new VectorSearchQuery(vector, null);
+        return new FindNearestQuery(vector, null);
     }
 
     @NonNull
-    public static VectorSearchQuery sparse(@NonNull SparseVector sparse) {
+    public static FindNearestQuery sparse(@NonNull SparseVector sparse) {
         VectorValidators.validateSparseEmbedding(sparse);
-        return new VectorSearchQuery(null, sparse);
+        return new FindNearestQuery(null, sparse);
     }
 
     @Nullable
@@ -44,8 +44,8 @@ public class VectorSearchQuery {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof VectorSearchQuery)) return false;
-        VectorSearchQuery that = (VectorSearchQuery) o;
+        if (!(o instanceof FindNearestQuery)) return false;
+        FindNearestQuery that = (FindNearestQuery) o;
         return Objects.equals(vector, that.vector) && Objects.equals(sparse, that.sparse);
     }
 

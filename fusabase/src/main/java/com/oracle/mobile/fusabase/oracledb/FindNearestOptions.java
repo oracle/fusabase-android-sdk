@@ -5,14 +5,14 @@ import androidx.annotation.Nullable;
 import java.util.Objects;
 
 /**
- * Optional parameters for vector similarity queries.
+ * Optional parameters for find-nearest queries.
  */
-public class VectorSearchOptions {
+public class FindNearestOptions {
     private final VectorMetric metric;
     private final Integer topK;
     private final Double threshold;
 
-    private VectorSearchOptions(@Nullable VectorMetric metric, @Nullable Integer topK, @Nullable Double threshold) {
+    private FindNearestOptions(@Nullable VectorMetric metric, @Nullable Integer topK, @Nullable Double threshold) {
         this.metric = metric;
         this.topK = topK;
         this.threshold = threshold;
@@ -57,16 +57,16 @@ public class VectorSearchOptions {
             return this;
         }
 
-        public VectorSearchOptions build() {
-            return new VectorSearchOptions(metric, topK, threshold);
+        public FindNearestOptions build() {
+            return new FindNearestOptions(metric, topK, threshold);
         }
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof VectorSearchOptions)) return false;
-        VectorSearchOptions that = (VectorSearchOptions) o;
+        if (!(o instanceof FindNearestOptions)) return false;
+        FindNearestOptions that = (FindNearestOptions) o;
         return metric == that.metric && Objects.equals(topK, that.topK) && Objects.equals(threshold, that.threshold);
     }
 
