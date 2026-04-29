@@ -9,8 +9,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.oracle.mobile.fusabase.oracledb.FieldValue;
 import com.oracle.mobile.fusabase.oracledb.VectorMetric;
-import com.oracle.mobile.fusabase.oracledb.VectorSearchOptions;
-import com.oracle.mobile.fusabase.oracledb.VectorSearchQuery;
+import com.oracle.mobile.fusabase.oracledb.FindNearestOptions;
+import com.oracle.mobile.fusabase.oracledb.FindNearestQuery;
 import com.oracle.mobile.fusabase.oracledb.VectorValue;
 
 import org.junit.Test;
@@ -32,8 +32,8 @@ public class vectorAPITests {
 
     @Test
     public void runQueryVectorSearchDensePayloadShape_matchesOpenApiContract() {
-        VectorSearchQuery query = VectorSearchQuery.dense(Arrays.asList(0.12, 0.34, 0.56, 0.78));
-        VectorSearchOptions options = VectorSearchOptions.builder()
+        FindNearestQuery query = FindNearestQuery.dense(Arrays.asList(0.12, 0.34, 0.56, 0.78));
+        FindNearestOptions options = FindNearestOptions.builder()
                 .metric(VectorMetric.COSINE)
                 .topK(10)
                 .threshold(0.25)

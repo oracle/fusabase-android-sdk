@@ -38,7 +38,7 @@ final class VectorValidators {
         validateDenseVector(sparse.getValues(), "Sparse embedding values must be a numeric array.");
     }
 
-    static void validateVectorSearchQuery(@NonNull VectorSearchQuery query) {
+    static void validateVectorSearchQuery(@NonNull FindNearestQuery query) {
         boolean hasDense = query.getVector() != null;
         boolean hasSparse = query.getSparse() != null;
         if ((hasDense && hasSparse) || (!hasDense && !hasSparse)) {
@@ -52,7 +52,7 @@ final class VectorValidators {
         }
     }
 
-    static void validateVectorSearchOptions(VectorSearchOptions options) {
+    static void validateVectorSearchOptions(FindNearestOptions options) {
         if (options == null) {
             return;
         }

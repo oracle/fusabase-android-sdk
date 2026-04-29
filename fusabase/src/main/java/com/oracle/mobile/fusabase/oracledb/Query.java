@@ -86,17 +86,17 @@ public class Query extends Reference {
      */
     final List<Filter> conditions;
     /**
-     * Vector similarity search field (v2 only).
+     * Find-nearest field (v2 only).
      */
     String vectorSearchField;
     /**
-     * Vector search query payload (v2 only).
+     * Find-nearest query payload (v2 only).
      */
-    VectorSearchQuery vectorSearchQuery;
+    FindNearestQuery findNearestQuery;
     /**
-     * Vector search options (v2 only).
+     * Find-nearest options (v2 only).
      */
-    VectorSearchOptions vectorSearchOptions;
+    FindNearestOptions findNearestOptions;
 
     final boolean isColGroup;
 
@@ -197,8 +197,8 @@ public class Query extends Reference {
         this.joins = new ArrayList<>();
         this.explicitOrder = new ArrayList<>();
         this.vectorSearchField = null;
-        this.vectorSearchQuery = null;
-        this.vectorSearchOptions = null;
+        this.findNearestQuery = null;
+        this.findNearestOptions = null;
         this.limit = 0;
         this.rt = 0;
         this.querySnap = null;
@@ -223,8 +223,8 @@ public class Query extends Reference {
         newQuery.limit = this.limit;
         newQuery.conditions.addAll(this.conditions);
         newQuery.vectorSearchField = this.vectorSearchField;
-        newQuery.vectorSearchQuery = this.vectorSearchQuery;
-        newQuery.vectorSearchOptions = this.vectorSearchOptions;
+        newQuery.findNearestQuery = this.findNearestQuery;
+        newQuery.findNearestOptions = this.findNearestOptions;
         return newQuery;
     }
 
@@ -457,8 +457,8 @@ public class Query extends Reference {
                     && this.explicitOrder.equals(query.explicitOrder)
                     && this.conditions.equals(query.conditions)
                     && Objects.equals(this.vectorSearchField, query.vectorSearchField)
-                    && Objects.equals(this.vectorSearchQuery, query.vectorSearchQuery)
-                    && Objects.equals(this.vectorSearchOptions, query.vectorSearchOptions);
+                    && Objects.equals(this.findNearestQuery, query.findNearestQuery)
+                    && Objects.equals(this.findNearestOptions, query.findNearestOptions);
         }
         return false;
     }
@@ -471,7 +471,7 @@ public class Query extends Reference {
     @Override
     public int hashCode() {
         return Objects.hash(aggregate, joins, path, limit, explicitOrder, conditions,
-                vectorSearchField, vectorSearchQuery, vectorSearchOptions);
+                vectorSearchField, findNearestQuery, findNearestOptions);
     }
 
     /**
@@ -674,17 +674,17 @@ public class Query extends Reference {
 
         if ("2.0".equals(this.oradb.getApp().getOptions().getApiVersion())
                 && this.vectorSearchField != null
-                && this.vectorSearchQuery != null) {
+                && this.findNearestQuery != null) {
             JsonObjectBuilder queryBuilder = Json.createObjectBuilder();
-            if (this.vectorSearchQuery.getVector() != null) {
+            if (this.findNearestQuery.getVector() != null) {
                 JsonArrayBuilder dense = Json.createArrayBuilder();
-                for (Double value : this.vectorSearchQuery.getVector()) {
+                for (Double value : this.findNearestQuery.getVector()) {
                     dense.add(value);
                 }
                 queryBuilder.add("vector", dense);
             }
-            if (this.vectorSearchQuery.getSparse() != null) {
-                SparseVector sparseVector = this.vectorSearchQuery.getSparse();
+            if (this.findNearestQuery.getSparse() != null) {
+                SparseVector sparseVector = this.findNearestQuery.getSparse();
                 JsonArrayBuilder indices = Json.createArrayBuilder();
                 for (Integer idx : sparseVector.getIndices()) {
                     indices.add(idx);
@@ -703,15 +703,15 @@ public class Query extends Reference {
             JsonObjectBuilder vectorSearchBuilder = Json.createObjectBuilder()
                     .add("field", this.vectorSearchField)
                     .add("query", queryBuilder);
-            if (this.vectorSearchOptions != null) {
-                if (this.vectorSearchOptions.getMetric() != null) {
-                    vectorSearchBuilder.add("metric", this.vectorSearchOptions.getMetric().name());
+            if (this.findNearestOptions != null) {
+                if (this.findNearestOptions.getMetric() != null) {
+                    vectorSearchBuilder.add("metric", this.findNearestOptions.getMetric().name());
                 }
-                if (this.vectorSearchOptions.getTopK() != null) {
-                    vectorSearchBuilder.add("topK", this.vectorSearchOptions.getTopK());
+                if (this.findNearestOptions.getTopK() != null) {
+                    vectorSearchBuilder.add("topK", this.findNearestOptions.getTopK());
                 }
-                if (this.vectorSearchOptions.getThreshold() != null) {
-                    vectorSearchBuilder.add("threshold", this.vectorSearchOptions.getThreshold());
+                if (this.findNearestOptions.getThreshold() != null) {
+                    vectorSearchBuilder.add("threshold", this.findNearestOptions.getThreshold());
                 }
             }
             payloadBuilder.add("vectorSearch", vectorSearchBuilder);
@@ -890,17 +890,17 @@ public class Query extends Reference {
     }
 
     /**
-     * Adds a vector similarity query constraint for v2 runQuery.
+     * Adds a find-nearest query constraint for v2 runQuery.
      *
      * @param field vector field name
-     * @param query dense or sparse vector query payload
+     * @param query dense or sparse find-nearest query payload
      * @param options optional metric/topK/threshold
-     * @return a new Query with vector search applied
+     * @return a new Query with find-nearest applied
      */
     @NonNull
-    public Query vectorSearch(@NonNull String field,
-                              @NonNull VectorSearchQuery query,
-                              @Nullable VectorSearchOptions options) {
+    public Query findNearest(@NonNull String field,
+                             @NonNull FindNearestQuery query,
+                             @Nullable FindNearestOptions options) {
         Objects.requireNonNull(field, "Invalid vector search field");
         Objects.requireNonNull(query, "Invalid vector search query");
         VectorValidators.validateVectorSearchQuery(query);
@@ -908,18 +908,18 @@ public class Query extends Reference {
 
         Query updatedQuery = this.deepCopy();
         updatedQuery.vectorSearchField = field;
-        updatedQuery.vectorSearchQuery = query;
-        updatedQuery.vectorSearchOptions = options;
+        updatedQuery.findNearestQuery = query;
+        updatedQuery.findNearestOptions = options;
         return updatedQuery;
     }
 
     /**
-     * Adds a vector similarity query constraint for v2 runQuery.
+     * Adds a find-nearest query constraint for v2 runQuery.
      */
     @NonNull
-    public Query vectorSearch(@NonNull String field,
-                              @NonNull VectorSearchQuery query) {
-        return vectorSearch(field, query, null);
+    public Query findNearest(@NonNull String field,
+                             @NonNull FindNearestQuery query) {
+        return findNearest(field, query, null);
     }
 
     /**
