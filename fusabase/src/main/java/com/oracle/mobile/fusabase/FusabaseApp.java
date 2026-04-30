@@ -176,6 +176,15 @@ public class FusabaseApp {
             @NonNull FusabaseOptions options,
             @NonNull String name
     ) {
+        // Only the default instance is supported.
+        // Named instances are intentionally not supported.
+        if (!DEFAULT_APP_NAME.equals(name)) {
+            FusabaseLogger.e(TAG, "Multiple FusabaseApp instances are not supported. Initialize only the default instance ([DEFAULT]).");
+            throw new IllegalStateException(
+                    "Multiple FusabaseApp instances are not supported. Initialize only the default instance ([DEFAULT])."
+            );
+        }
+
         if (!APP_INSTANCES.containsKey(name)) {
             // Set global SSL configuration for self-signed certificates
             globalAllowsSelfSignedCertificates = options.allowsSelfSignedCertificates();
@@ -236,6 +245,10 @@ public class FusabaseApp {
      */
     @NonNull
     public static FusabaseApp getInstance(@NonNull String name) {
+        if (!DEFAULT_APP_NAME.equals(name)) {
+            FusabaseLogger.e(TAG, "Named FusabaseApp instances are not supported. Use getInstance() for the default instance.");
+            throw new IllegalStateException("Named FusabaseApp instances are not supported. Use getInstance() for the default instance.");
+        }
         FusabaseApp namedApp = APP_INSTANCES.get(name);
         if (namedApp == null) {
             FusabaseLogger.e(name + " app hasn't been initialized yet.");

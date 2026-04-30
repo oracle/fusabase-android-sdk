@@ -446,6 +446,8 @@ public class HttpRequestHelper {
     }
 
     public HttpResponse executeRequest() throws FusabaseException {
+        // NOTE: This method buffers the full response body into memory.
+        // Prefer executeRequestStreaming() for large responses.
         try {
 
             if (request == null) {

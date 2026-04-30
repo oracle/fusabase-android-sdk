@@ -37,12 +37,15 @@ import com.oracle.mobile.fusabase.FusabaseNetworkException;
 import com.oracle.mobile.fusabase.FusabaseOptions;
 import com.oracle.mobile.fusabase.http.HttpRequestHelper;
 import com.oracle.mobile.fusabase.http.HttpResponse;
+import com.oracle.mobile.fusabase.http.InputStreamRequestBody;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 import com.oracle.mobile.fusabase.task.Task;
 import com.oracle.mobile.fusabase.task.OnCompleteListener;
 import com.oracle.mobile.fusabase.task.Tasks;
 import com.oracle.mobile.fusabase.utils.Utils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.time.Instant;
@@ -519,7 +522,8 @@ class StorageHelper {
         HttpResponse response = null;
 
         try {
-            response = requestHelper.executeRequest();
+            // Stream the response body and enforce maxResultDownloadSize while reading.
+            response = requestHelper.executeRequestStreaming();
         } catch (FusabaseException e) {
             FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
             throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
@@ -527,8 +531,29 @@ class StorageHelper {
 
         if (response.getStatus()) {
             FusabaseLogger.d(TAG, "Fetched Object Successfully.");
-            byte[] result = response.getResponseBytes();
-            return result;
+
+            try (InputStream in = response.getInputStream();
+                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                if (in == null) {
+                    throw new StorageException(new Exception("Empty response body"), StorageErrorCode.UNKNOWN_ERROR);
+                }
+
+                byte[] buffer = new byte[8192];
+                long totalRead = 0;
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    totalRead += read;
+                    if (totalRead > maxResultDownloadSize) {
+                        throw new StorageException(
+                                new Exception("Download exceeds maxResultDownloadSize of " + maxResultDownloadSize + " bytes"),
+                                StorageErrorCode.INVALID_ARGUMENT);
+                    }
+                    out.write(buffer, 0, read);
+                }
+                return out.toByteArray();
+            } catch (IOException ioe) {
+                throw new StorageException(ioe, StorageErrorCode.INVALID_ARGUMENT);
+            }
         }
         FusabaseLogger.e(TAG, "Failed to fetch object with response message " + response.getError());
         throw new StorageException(
@@ -772,6 +797,90 @@ class StorageHelper {
 
         FusabaseLogger.e(TAG, "Put bytes failed with response message " + response.getError());
         throw new StorageException(new Exception("Put data failed with response message " + response.getError()), StorageErrorCode.fromCode(response.getCode()));
+    }
+
+    protected JsonObject putStreamData(@NonNull StorageReference storageReference,
+                                       @NonNull String mimeType,
+                                       @NonNull InputStream stream,
+                                       long contentLength,
+                                       @NonNull UploadTask uploadTask) throws FusabaseException {
+
+        HttpRequestHelper requestHelper = new HttpRequestHelper();
+
+        JsonObject objectPath = Json.createObjectBuilder()
+                .add("path", storageReference.getPath())
+                .add("bucket", storageReference.getBucket())
+                .build();
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("x-object-path", objectPath.toString());
+
+        String authHeader = this.buildAuthorizationHeader();
+        if (!authHeader.isEmpty()) {
+            headers.put("Authorization", authHeader);
+        }
+
+        headers.put("Content-Type", mimeType);
+
+        Map<String, String> queryParameters = new HashMap<>();
+        queryParameters.put("apiKey", this.options.getAppId());
+
+        MediaType mediaType = MediaType.parse(mimeType);
+        if (mediaType == null) {
+            mediaType = MediaType.parse("application/octet-stream");
+        }
+
+        RequestBody body = new InputStreamRequestBody(mediaType, stream, contentLength);
+
+        requestHelper.createHttpRequest(Utils.urlBuilder(
+                        this.options.getOrdsHost(),
+                        BAAS_SERVICE_PATH,
+                        this.options.getObjectsType().equals("dbfs") ? DBFS_OBJECT_TYPE : OCI_OBJECT_TYPE,
+                        this.options.getProjectId(),
+                        OPERATION_PATH),
+                "POST",
+                headers,
+                queryParameters,
+                body);
+
+        checkIfTaskIsPaused(uploadTask);
+
+        if (checkIfTaskIsCancelled(uploadTask)) {
+            uploadTask.setCanceled();
+            return Json.createObjectBuilder().build();
+        }
+
+        HttpResponse response = null;
+        try {
+            response = requestHelper.executeRequest();
+        } catch (FusabaseException e) {
+            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
+            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
+        }
+
+        if (response.getStatus()) {
+            FusabaseLogger.d(TAG, "Put stream successfully uploaded data.");
+            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
+            JsonObject result = reader.readObject();
+            reader.close();
+
+            // If contentLength unknown, use size from response if present
+            long totalBytes = contentLength >= 0 ? contentLength : result.getInt("size", 0);
+            uploadTask.setResult(uploadTask.new TaskSnapshot(
+                    storageReference,
+                    uploadTask.getResult() != null ? uploadTask.getResult().getMetadata() : null,
+                    totalBytes,
+                    totalBytes));
+
+            if (uploadTask.getProgressListener() != null) {
+                uploadTask.getListenerExecutor().post(uploadTask::onProgress);
+            }
+            return result;
+        }
+
+        FusabaseLogger.e(TAG, "Put stream failed with response message " + response.getError());
+        throw new StorageException(new Exception("Put stream failed with response message " + response.getError()),
+                StorageErrorCode.fromCode(response.getCode()));
     }
 //    protected boolean putStreamData (@NonNull InputStream stream, @NonNull StorageMetadata metadata) {
 //
