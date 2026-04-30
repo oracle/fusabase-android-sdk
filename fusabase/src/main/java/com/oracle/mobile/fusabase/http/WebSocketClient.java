@@ -108,7 +108,8 @@ public class WebSocketClient {
 
             @Override
             public void onMessage(WebSocket webSocket, String message) {
-                FusabaseLogger.d(TAG, "Message received to WebSocket " + message);
+                // WebSocket messages may contain sensitive payloads; never log contents.
+                FusabaseLogger.d(TAG, "Message received from WebSocket (len=" + (message == null ? 0 : message.length()) + ")");
                 webSocketCallback.onMessage(message);
             }
 
@@ -146,7 +147,8 @@ public class WebSocketClient {
     }
 
     public void sendMessage(String message) {
-        FusabaseLogger.d(TAG, "Sending message through webSocket " + message);
+        // WebSocket messages may contain sensitive payloads; never log contents.
+        FusabaseLogger.d(TAG, "Sending message through WebSocket (len=" + (message == null ? 0 : message.length()) + ")");
         webSocket.send(message);
     }
 

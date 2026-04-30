@@ -28,12 +28,12 @@ package com.oracle.mobile.fusabase.storage;
 
 import android.content.Context;
 import android.net.Uri;
-import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 import com.oracle.mobile.fusabase.utils.Utils;
 import com.oracle.mobile.fusabase.task.Task;
 import com.oracle.mobile.fusabase.task.TaskCompletionSource;
@@ -243,7 +243,8 @@ public class StorageReference {
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
                 Uri downloadUri = this.storageHelper.getDownloadURLHelper(this);
-                Log.d("Storage", downloadUri.getPath());
+                // Download URI path can be sensitive in some environments; do not log it.
+                FusabaseLogger.d("Storage", "Fetched download URL");
                 taskCompletionSource.setResult(downloadUri);
             } catch (Exception e) {
                 Exception exception = e;

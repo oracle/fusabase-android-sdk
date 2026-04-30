@@ -69,7 +69,8 @@ public class FusabaseInitProvider extends ContentProvider {
     @Override
     public boolean onCreate() {
         try{
-            FusabaseLogger.ENABLED = true;
+            // Logging is disabled by default. Applications may enable it explicitly
+            // via SDK options/config.
             FusabaseApp.initializeApp(Objects.requireNonNull(getContext()));
             FusabaseLogger.v(TAG, "Initialized default app for Fusabase.");
         } catch (Exception e)

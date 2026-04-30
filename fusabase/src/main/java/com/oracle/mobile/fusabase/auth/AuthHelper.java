@@ -228,7 +228,8 @@ abstract class AuthHelper {
             String response = URLDecoder.decode(data.toString());
             String authCode = response.substring(response.indexOf("code=") + "code=".length());
 
-            FusabaseLogger.d(TAG, "Received authCode " + authCode);
+            // authCode is sensitive; never log it.
+            FusabaseLogger.d(TAG, "Received authCode (redacted)");
 
             JsonObject responseObject;
             JsonObject userDetails;

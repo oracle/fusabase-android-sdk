@@ -90,7 +90,8 @@ public class SocialLoginActivity extends AppCompatActivity {
             return;
         }
 
-        FusabaseLogger.d(TAG, "Received callback data. " + data);
+        // Callback URI may contain sensitive authorization codes; never log it.
+        FusabaseLogger.d(TAG, "Received callback data.");
 
         // Save code in Prefs so that if this activity was killed, the getPendingAuthResult()
         // can pick off where the user left off

@@ -26,10 +26,9 @@
 
 package com.oracle.mobile.fusabase.oracledb;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 
+import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 import com.oracle.mobile.fusabase.task.Task;
 import com.oracle.mobile.fusabase.task.TaskCompletionSource;
 
@@ -158,7 +157,8 @@ public class AggregateQuery {
                 .add("col_group", "")
                 .add("options", Json.createObjectBuilder().build());
 
-        Log.d("TAG", this.path.toString());
+        // Query paths may contain sensitive identifiers; do not log them.
+        FusabaseLogger.d("oracledb", "AggregateQuery params built");
         return payloadBuilder.build();
     }
 
