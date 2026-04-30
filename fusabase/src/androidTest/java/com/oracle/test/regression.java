@@ -189,29 +189,29 @@ public class regression {
     @AfterClass
     public static void tearDownClass() throws Exception {
         // Remove all docs in the collection for isolation between tests
-        addSecurityRule(new String[]{"testCollection"});
-        QuerySnapshot allDocs = await(db.collection("testCollection").get(), 20, TimeUnit.SECONDS);
-        WriteBatch batch = db.batch();
-        for (DocumentSnapshot doc : allDocs.getDocuments()) {
-            batch.delete(doc.getReference());
-        }
-        await(batch.commit(), 30, TimeUnit.SECONDS);
+//        addSecurityRule(new String[]{"testCollection"});
+//        QuerySnapshot allDocs = await(db.collection("testCollection").get(), 20, TimeUnit.SECONDS);
+//        WriteBatch batch = db.batch();
+//        for (DocumentSnapshot doc : allDocs.getDocuments()) {
+//            batch.delete(doc.getReference());
+//        }
+//        await(batch.commit(), 30, TimeUnit.SECONDS);
+//
+//        addSecurityRule(new String[]{"users"});
+//        QuerySnapshot userDocs = await(db.collection("users").get(), 20, TimeUnit.SECONDS);
+//        WriteBatch usersBatch = db.batch();
+//        for (DocumentSnapshot doc : userDocs.getDocuments()) {
+//            usersBatch.delete(doc.getReference());
+//        }
+//        await(usersBatch.commit(), 40, TimeUnit.SECONDS);
 
-        addSecurityRule(new String[]{"users"});
-        QuerySnapshot userDocs = await(db.collection("users").get(), 20, TimeUnit.SECONDS);
-        WriteBatch usersBatch = db.batch();
-        for (DocumentSnapshot doc : userDocs.getDocuments()) {
-            usersBatch.delete(doc.getReference());
-        }
-        await(usersBatch.commit(), 40, TimeUnit.SECONDS);
-
-        addSecurityRule(new String[]{"city"});
-        QuerySnapshot cityDocs = await(db.collection("city").get(), 20, TimeUnit.SECONDS);
-        WriteBatch cityBatch = db.batch();
-        for (DocumentSnapshot doc : cityDocs.getDocuments()) {
-            cityBatch.delete(doc.getReference());
-        }
-        await(cityBatch.commit(), 30, TimeUnit.SECONDS);
+//        addSecurityRule(new String[]{"city"});
+//        QuerySnapshot cityDocs = await(db.collection("city").get(), 20, TimeUnit.SECONDS);
+//        WriteBatch cityBatch = db.batch();
+//        for (DocumentSnapshot doc : cityDocs.getDocuments()) {
+//            cityBatch.delete(doc.getReference());
+//        }
+//        await(cityBatch.commit(), 30, TimeUnit.SECONDS);
     }
 
     private static void initializeInstances() throws Exception {
@@ -226,16 +226,16 @@ public class regression {
 //                .setSelfRegistrationProfile("1941ffb49cae49d39473613b2ea2ca46")
 //                .setDomainURL("https://idcs-360c1204d11f41d3836e7fb2f1769ca7.identity.oraclecloud.com").build();
 //        optionsBuilder.setIDCSOptions(idcsOptions);
-        optionsBuilder.setProjectId("5083E5A69358CE9CE0631F965E646288");
-        optionsBuilder.setAppId("5085BAC8C52F74C4E0631F965E646039");
+        optionsBuilder.setProjectId("50A7381AE961506EE0631F965E64E389");
+        optionsBuilder.setAppId("50AB50DF3DB7C3A7E0631F965E64FCAE");
         optionsBuilder.setObjectType("dbfs");
         optionsBuilder.setSchema("USER1");
-        optionsBuilder.setStorageBucket("dbfs_OQUHPBCVYAYTHHU");
+        optionsBuilder.setStorageBucket("dbfs_SYHDYVZBFPLFSOF");
         optionsBuilder.setApiVersion("2.0");
         optionsBuilder.setAppName("testapp");
         optionsBuilder.setAuthId("5083E5BBEFEACEA7E0631F965E644CA8");
         optionsBuilder.setUseSocket(true);
-        optionsBuilder.setUploadChunkSize(10);
+        optionsBuilder.setUploadChunkSize(3);
         optionsBuilder.setAllowsSelfSignedCertificates(true);
         optionsBuilder.setEnableLogging(true);
 
@@ -16543,5 +16543,62 @@ public class regression {
         // Verify it's gone
         DocumentSnapshot afterDelete = await(docRef.get());
         assertFalse("Document should not exist after delete", afterDelete.exists());
+    }
+
+    @Test
+    public void testNamedAppInitializationNotSupported() throws Exception {
+        // Ensure default app is initialized (setUp does this), then verify named init is rejected.
+        FusabaseOptions opts = new FusabaseOptions.Builder()
+                .setOrdsHost("https://example.com")
+                .setProjectId("project")
+                .setAppId("app")
+                .setAuthType("base")
+                .setAuthId("auth")
+                .build();
+
+        try {
+            FusabaseApp.initializeApp(
+                    InstrumentationRegistry.getInstrumentation().getTargetContext(),
+                    opts,
+                    "SECOND"
+            );
+            fail("Expected IllegalStateException when initializing a non-default FusabaseApp");
+        } catch (IllegalStateException expected) {
+            // expected
+        }
+    }
+
+    @Test
+    public void testStorageUploadAndDownload_bytesRoundTrip() throws Exception {
+        String[] collections = { "testCollection" };
+        addSecurityRuleStorage(collections);
+
+        // Ensure we have a signed-in user (many storage operations expect auth).
+        String[] creds = getNewUserCredentials();
+        await(auth.createUserWithEmailAndPassword(creds[0], creds[1]));
+
+        StorageReference ref = storage.getReference().child("testCollection/upload_download_roundtrip.bin");
+
+        byte[] payload = new byte[] { 1, 2, 3, 4, 5, 42, 0, -7 };
+        await(ref.putBytes(payload));
+
+        // Download with a sufficiently large maxDownloadSizeBytes
+        byte[] downloaded = await(ref.getBytes(1024 * 1024));
+        assertNotNull(downloaded);
+        assertArrayEquals(payload, downloaded);
+
+        // Also verify that maxDownloadSizeBytes is enforced.
+        boolean threw = false;
+        try {
+            await(ref.getBytes(payload.length - 1));
+        } catch (Exception e) {
+            threw = true;
+        }
+        assertTrue("getBytes should fail when maxDownloadSizeBytes is smaller than the object size", threw);
+
+        // Cleanup best-effort
+        try {
+            await(ref.delete());
+        } catch (Exception ignored) {}
     }
 }

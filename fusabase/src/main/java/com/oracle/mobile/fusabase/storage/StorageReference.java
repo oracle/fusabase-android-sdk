@@ -38,9 +38,9 @@ import com.oracle.mobile.fusabase.utils.Utils;
 import com.oracle.mobile.fusabase.task.Task;
 import com.oracle.mobile.fusabase.task.TaskCompletionSource;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -216,6 +216,13 @@ public class StorageReference {
 
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
+                // Fail fast based on verified server metadata size.
+                StorageMetadata metadata = this.storageHelper.createStorageMetadata(this, this.storageHelper.getMetadata(this));
+                if (metadata.getSizeBytes() > maxDownloadSizeBytes) {
+                    throw new StorageException(
+                            "Download size " + metadata.getSizeBytes() + " exceeds maxDownloadSizeBytes " + maxDownloadSizeBytes,
+                            StorageException.Code.INVALID_ARGUMENT);
+                }
                 byte[] result = this.storageHelper.getObject(this, maxDownloadSizeBytes);
                 taskCompletionSource.setResult(result);
             } catch (Exception e) {
@@ -760,20 +767,6 @@ public class StorageReference {
                 // Set the task running
                 uploadTask.setRunning();
 
-                ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-
-                try (InputStream inputStream = context.getContentResolver().openInputStream(uri)) {
-                    if (inputStream == null) return null;
-
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        byteBuffer.write(buffer, 0, bytesRead);
-                    }
-                }
-
-                byte[] bytes = byteBuffer.toByteArray();
-
                 JsonObject result;
 
                 String mimeType = metadata.getContentType() == null ?
@@ -783,10 +776,18 @@ public class StorageReference {
                     String extension = MimeTypeMap.getFileExtensionFromUrl(uri.toString());
                     mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
                 }
-                result = this.storageHelper.putObject(this,
-                        mimeType,
-                        bytes,
-                        metadata,
+
+                InputStream inputStream = context.getContentResolver().openInputStream(uri);
+                if (inputStream == null) {
+                    throw new FileNotFoundException("Unable to open input stream for uri: " + uri);
+                }
+
+                // We don't know the size from ContentResolver reliably; use chunked transfer (contentLength = -1)
+                result = this.storageHelper.putStreamData(
+                        this,
+                        mimeType == null ? "application/octet-stream" : mimeType,
+                        inputStream,
+                        -1,
                         uploadTask);
 
                 // Handle cases of cancelled
@@ -840,21 +841,14 @@ public class StorageReference {
                 // Set the task running
                 uploadTask.setRunning();
 
-                ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = stream.read(buffer)) != -1) {
-                    byteBuffer.write(buffer, 0, bytesRead);
-                }
-
-                byte[] bytes = byteBuffer.toByteArray();
-
-                JsonObject result = this.storageHelper.putObject(this,
+                JsonObject result = this.storageHelper.putStreamData(
+                        this,
                         metadata.getContentType() == null ?
-                            "application/octet-stream" :
-                            metadata.getContentType(),
-                        bytes, metadata, uploadTask);
+                                "application/octet-stream" :
+                                metadata.getContentType(),
+                        stream,
+                        -1,
+                        uploadTask);
 
                 result = result.containsKey("metadata") ? result.getJsonObject("metadata") : result;
                 StorageMetadata storageMetadata = this.storageHelper.createStorageMetadata(this, result);
