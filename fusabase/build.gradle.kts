@@ -194,7 +194,7 @@ val javadocJar by tasks.registering(Jar::class) {
 }
 
 tasks.named<org.jetbrains.dokka.gradle.DokkaTask>("dokkaHtml") {
-    moduleName.set("Fusabase Android SDK Reference")
+    moduleName.set("Oracle® Backend for Firebase Android SDK Reference")
     moduleVersion.set("Release ${project.version} (G48185-01)")
 
     dokkaSourceSets.configureEach {
