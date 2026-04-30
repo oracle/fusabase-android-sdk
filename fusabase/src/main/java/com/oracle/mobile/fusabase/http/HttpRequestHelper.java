@@ -26,8 +26,6 @@
 
 package com.oracle.mobile.fusabase.http;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 
 import com.oracle.mobile.fusabase.FusabaseApp;
@@ -38,6 +36,7 @@ import java.io.IOException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Map;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
@@ -55,6 +54,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okhttp3.Headers;
 import okhttp3.TlsVersion;
 import okio.Buffer;
 import okio.BufferedSource;
@@ -64,6 +64,45 @@ import java.util.Collections;
 public class HttpRequestHelper {
 
     private final static String TAG = "FusabaseHTTP";
+
+    // Never log request bodies. Redact sensitive headers and query parameters.
+    private static final String BODY_OMITTED = "<omitted>";
+
+    // NOTE: apiKey is intentionally NOT treated as sensitive (per SDK policy).
+    private static final String[] SENSITIVE_QUERY_PARAMS = new String[] {
+            "code",
+            "authCode",
+            "authorization_code",
+            "token",
+            "access_token",
+            "refresh_token",
+            "id_token",
+            "password",
+            "client_secret"
+    };
+
+    private static final String[] SENSITIVE_HEADERS = new String[] {
+            "authorization",
+            "cookie",
+            "set-cookie",
+            "x-api-key",
+            "proxy-authorization"
+    };
+
+    private static boolean isSensitiveQueryParamName(@NonNull String name) {
+        // Defensive: treat any token-ish parameter name as sensitive.
+        String n = name.toLowerCase(Locale.US);
+        if (equalsIgnoreCaseAny(n, SENSITIVE_QUERY_PARAMS)) return true;
+        // common patterns
+        return n.contains("token") || n.contains("secret") || n.contains("password") || n.contains("auth") || n.contains("code");
+    }
+
+    private static boolean isSensitiveHeaderName(@NonNull String name) {
+        String n = name.toLowerCase(Locale.US);
+        if (equalsIgnoreCaseAny(n, SENSITIVE_HEADERS)) return true;
+        // Defensive: cover variations.
+        return n.contains("authorization") || n.contains("cookie") || n.contains("token") || n.contains("secret");
+    }
 
     static class ExponentialBackoffInterceptor implements Interceptor {
         private final int maxRetries;
@@ -90,7 +129,7 @@ public class HttpRequestHelper {
                     }
 
                     if (attempt + 1 < maxRetries)
-                        Log.d("fusabaseHttp", "Request failed, retrying...");
+                        FusabaseLogger.d(TAG, "Request failed, retrying...");
 
                 } catch (IOException e) {
                     if (attempt >= maxRetries - 1) {
@@ -104,7 +143,7 @@ public class HttpRequestHelper {
 
                 try {
                     if (attempt < this.maxRetries) {
-                        Log.d("ExponentialBackoff", "Retry attempt " + attempt + " after " + backoff + " ms");
+                        FusabaseLogger.d(TAG, "Retry attempt " + attempt + " after " + backoff + " ms");
                         TimeUnit.MILLISECONDS.sleep(backoff);
                         if(response != null) {
                             response.close();
@@ -126,6 +165,36 @@ public class HttpRequestHelper {
     private Request request = null;
     private int retries;
     private String requestBodyForLogging = null;
+
+    private static boolean equalsIgnoreCaseAny(String value, String[] candidates) {
+        if (value == null) return false;
+        for (String c : candidates) {
+            if (c != null && c.equalsIgnoreCase(value)) return true;
+        }
+        return false;
+    }
+
+    @NonNull
+    private static String sanitizeUrl(@NonNull HttpUrl url) {
+        HttpUrl.Builder builder = url.newBuilder();
+        for (String name : url.queryParameterNames()) {
+            if (isSensitiveQueryParamName(name)) builder.setQueryParameter(name, "***");
+        }
+        return builder.build().toString();
+    }
+
+    @NonNull
+    private static String sanitizeHeaders(@NonNull Headers headers) {
+        if (headers.size() == 0) return "Headers: None";
+        StringBuilder sb = new StringBuilder();
+        sb.append("Headers:\n");
+        for (String name : headers.names()) {
+            String value = headers.get(name);
+            if (isSensitiveHeaderName(name)) value = "***";
+            sb.append("  ").append(name).append(": ").append(value).append("\n");
+        }
+        return sb.toString();
+    }
 
     public HttpRequestHelper() {
         this(1);
@@ -363,28 +432,17 @@ public class HttpRequestHelper {
         StringBuilder logMessage = new StringBuilder();
         logMessage.append("HTTP Request Details:\n");
         logMessage.append("Method: ").append(request.method()).append("\n");
-        logMessage.append("URL: ").append(request.url().toString()).append("\n");
-
-        // Log headers
-        if (request.headers().size() > 0) {
-            logMessage.append("Headers:\n");
-            for (String name : request.headers().names()) {
-                logMessage.append("  ").append(name).append(": ").append(request.headers().get(name)).append("\n");
-            }
-        } else {
-            logMessage.append("Headers: None\n");
-        }
-
-        // Log body if available
-        if (requestBodyForLogging != null && !requestBodyForLogging.isEmpty()) {
-            logMessage.append("Body: ").append(requestBodyForLogging);
-        } else if (request.body() != null) {
-            logMessage.append("Body: Present (binary or custom RequestBody)");
-        } else {
-            logMessage.append("Body: None");
-        }
+        logMessage.append("URL: ").append(sanitizeUrl(request.url())).append("\n");
+        logMessage.append(sanitizeHeaders(request.headers()));
+        // Never log request bodies (they may contain secrets/tokens/passwords)
+        logMessage.append("Body: ").append(BODY_OMITTED);
 
         FusabaseLogger.d(TAG, logMessage.toString());
+    }
+
+    private static void logFailedResponse(@NonNull Response response) {
+        // Never log response bodies (they may contain secrets or backend diagnostics)
+        FusabaseLogger.w(TAG, "Request failed with code " + response.code() + " message=" + response.message());
     }
 
     public HttpResponse executeRequest() throws FusabaseException {
@@ -401,11 +459,8 @@ public class HttpRequestHelper {
             Response response = this.httpClient.newCall(this.request).execute();
 
             if (!response.isSuccessful()) {
-                String responseMessage = response.message();
                 int responseCode = response.code();
-                Log.d("fusabaseHttp", "Request failed, with code " + response.code() +
-                        " with message " + responseMessage + " following response received " +
-                        response.body().string());
+                logFailedResponse(response);
                 response.close();
                 return new HttpResponse(false, null, null,
                         "Unexpected code " + response, responseCode);
@@ -450,11 +505,8 @@ public class HttpRequestHelper {
             Response response = this.httpClient.newCall(this.request).execute();
 
             if (!response.isSuccessful()) {
-                String responseMessage = response.message();
                 int responseCode = response.code();
-                Log.d("fusabaseHttp", "Request failed, with code " + response.code() +
-                        " with message " + responseMessage + " following response received " +
-                        response.body().string());
+                logFailedResponse(response);
                 response.close();
                 return new HttpResponse(false, null, null,
                         "Unexpected code " + response, responseCode);

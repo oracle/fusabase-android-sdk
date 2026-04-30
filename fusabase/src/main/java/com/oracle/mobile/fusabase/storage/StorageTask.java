@@ -29,7 +29,6 @@ package com.oracle.mobile.fusabase.storage;
 import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -559,14 +558,14 @@ public abstract class StorageTask<ResultT extends StorageTask.ProvideError> exte
         if (this.isCanceled) {
             throw new IllegalStateException("Cannot resume a task that is canceled");
         }
-        Log.d("Storage", "Upload Task is resuming");
+        FusabaseLogger.d("Storage", "Upload Task is resuming");
         if (this.isComplete || this.isFailed || this.keepRunning.get())
             return false;
 
         this.setResumed();
         this.onResume();
 
-        Log.d("Storage", "Upload Task is resumed");
+        FusabaseLogger.d("Storage", "Upload Task is resumed");
         return true;
     }
 
@@ -664,7 +663,7 @@ public abstract class StorageTask<ResultT extends StorageTask.ProvideError> exte
         this.setRunning();
 
         future.whenComplete((result, exception) -> {
-            Log.d("Storage", "In handle Future from thread " + Thread.currentThread().getName());
+            FusabaseLogger.d("Storage", "In handle Future from thread " + Thread.currentThread().getName());
 
             if (exception != null) {
                 FusabaseLogger.e("Task completed exceptionally: " + exception.getMessage());
@@ -685,7 +684,7 @@ public abstract class StorageTask<ResultT extends StorageTask.ProvideError> exte
 
 
     protected void onCanceled() {
-        Log.d("Storage", "Upload Task is canceled");
+        FusabaseLogger.d("Storage", "Upload Task is canceled");
         if(this.canceledListener != null) {
             listenerExecutor.post(new Runnable() {
                 @Override
@@ -708,7 +707,7 @@ public abstract class StorageTask<ResultT extends StorageTask.ProvideError> exte
     }
 
     protected void onPaused() {
-        Log.d("Storage", "Upload Task is actually paused");
+        FusabaseLogger.d("Storage", "Upload Task is actually paused");
         if(this.pausedListener != null){
             listenerExecutor.post(new Runnable() {
                 @Override
@@ -720,7 +719,7 @@ public abstract class StorageTask<ResultT extends StorageTask.ProvideError> exte
     }
 
     protected void onResume() {
-        Log.d("Storage", "Upload Task is actually resumed");
+        FusabaseLogger.d("Storage", "Upload Task is actually resumed");
         synchronized (this.lock) {
             this.keepRunning.set(true);
             this.lock.notifyAll();
