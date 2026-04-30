@@ -700,7 +700,7 @@ class IDCSAuthHelper extends AuthHelper {
         FusabaseLogger.d(TAG, "Sending request to sign out user from idcs.");
         HttpRequestHelper requestHelper = new HttpRequestHelper();
         Map<String, String> headers = new HashMap<>();
-        headers.put("Authorization ", String.format("Basic %s", this.encodedSecret));
+        headers.put("Authorization", String.format("Basic %s", this.encodedSecret));
         headers.put("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
         headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.put("Accept", "*/*");
@@ -725,6 +725,7 @@ class IDCSAuthHelper extends AuthHelper {
 
         if (response.getStatus()) {
             FusabaseLogger.i(TAG, "Successfully signed out user form idcs");
+            return;
         }
 
         FusabaseLogger.e(TAG, "Failed to sign out user from" +
