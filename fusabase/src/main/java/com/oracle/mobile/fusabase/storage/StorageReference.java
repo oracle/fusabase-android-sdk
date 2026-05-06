@@ -27,7 +27,9 @@
 package com.oracle.mobile.fusabase.storage;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.webkit.MimeTypeMap;
 
 import androidx.annotation.NonNull;
@@ -41,6 +43,7 @@ import com.oracle.mobile.fusabase.task.TaskCompletionSource;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -782,16 +785,13 @@ public class StorageReference {
                     throw new FileNotFoundException("Unable to open input stream for uri: " + uri);
                 }
 
-                // We don't know the size from ContentResolver reliably; use chunked transfer (contentLength = -1)
+                long contentLength = getContentLength(uri);
                 result = this.storageHelper.putStreamData(
                         this,
                         mimeType == null ? "application/octet-stream" : mimeType,
                         inputStream,
-                        -1,
+                        contentLength,
                         uploadTask);
-
-                // Handle cases of cancelled
-                // run a getMetadata call in case of multipart upload
 
                 result = result.containsKey("metadata") ? result.getJsonObject("metadata") : result;
                 StorageMetadata storageMetadata = this.storageHelper.createStorageMetadata(this, result);
@@ -815,6 +815,40 @@ public class StorageReference {
 
         uploadTask.handleFuture(future);
         return uploadTask;
+    }
+
+    private long getContentLength(@NonNull Uri uri) {
+        try (AssetFileDescriptor descriptor = context.getContentResolver().openAssetFileDescriptor(uri, "r")) {
+            if (descriptor != null && descriptor.getLength() >= 0) {
+                return descriptor.getLength();
+            }
+        } catch (IOException | SecurityException ignored) {
+        }
+
+        android.database.Cursor cursor = null;
+        try {
+            cursor = context.getContentResolver().query(uri,
+                    new String[]{OpenableColumns.SIZE},
+                    null,
+                    null,
+                    null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                    long size = cursor.getLong(sizeIndex);
+                    if (size >= 0) {
+                        return size;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return -1;
     }
 
     /**
