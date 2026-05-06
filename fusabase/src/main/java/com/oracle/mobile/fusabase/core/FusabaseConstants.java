@@ -46,7 +46,7 @@ public final class FusabaseConstants {
     public static final String ALLOW_SELF_SIGNED_CERTIFICATES_KEY = "fusabase_allowsSelfSignedCertificates";
 
     // Default values
-    public static final int DEFAULT_UPLOAD_CHUNK_SIZE = 16 * 1024 * 1024; // 16MB
+    public static final int DEFAULT_UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024; // 1MB
     public static final long DEFAULT_LONG_POLLING_INTERVAL = 29; // 29 seconds
     public static final boolean DEFAULT_USE_SOCKET = false;
     public static final boolean DEFAULT_ENABLE_LOGGING = false;

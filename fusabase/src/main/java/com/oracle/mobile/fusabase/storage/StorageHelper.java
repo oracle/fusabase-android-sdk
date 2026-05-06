@@ -35,6 +35,7 @@ import androidx.annotation.Nullable;
 import com.oracle.mobile.fusabase.FusabaseException;
 import com.oracle.mobile.fusabase.FusabaseNetworkException;
 import com.oracle.mobile.fusabase.FusabaseOptions;
+import com.oracle.mobile.fusabase.core.FusabaseConstants;
 import com.oracle.mobile.fusabase.http.HttpRequestHelper;
 import com.oracle.mobile.fusabase.http.HttpResponse;
 import com.oracle.mobile.fusabase.http.InputStreamRequestBody;
@@ -47,6 +48,7 @@ import com.oracle.mobile.fusabase.utils.Utils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.StringReader;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -634,6 +636,49 @@ class StorageHelper {
         return task.isCanceled();
     }
 
+    private int getUploadBufferSize() {
+        return this.CHUNK_SIZE > 0 ? this.CHUNK_SIZE : FusabaseConstants.DEFAULT_UPLOAD_CHUNK_SIZE;
+    }
+
+    private void checkIfStreamingUploadShouldContinue(@NonNull UploadTask uploadTask) throws IOException {
+        if (checkIfTaskIsCancelled(uploadTask)) {
+            throw new IOException("Upload task canceled");
+        }
+
+        synchronized (uploadTask.getLock()) {
+            while (!uploadTask.getKeepRunning().get() && uploadTask.isPaused()) {
+                try {
+                    uploadTask.getLock().wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new InterruptedIOException("Upload task interrupted while paused");
+                }
+
+                if (checkIfTaskIsCancelled(uploadTask)) {
+                    throw new IOException("Upload task canceled");
+                }
+            }
+        }
+    }
+
+    private void updateStreamingUploadProgress(@NonNull StorageReference storageReference,
+                                               @NonNull UploadTask uploadTask,
+                                               long bytesTransferred,
+                                               long totalBytes) {
+        StorageMetadata metadata = uploadTask.getResult() != null ?
+                uploadTask.getResult().getMetadata() :
+                new StorageMetadata.Builder().build();
+        uploadTask.setResult(uploadTask.new TaskSnapshot(
+                storageReference,
+                metadata,
+                bytesTransferred,
+                totalBytes));
+
+        if (uploadTask.getProgressListener() != null) {
+            uploadTask.getListenerExecutor().post(uploadTask::onProgress);
+        }
+    }
+
     /**
      * Helper method to distinguish whether the required upload needs to be uploaded
      * in multiple chunk or as a whole.
@@ -779,13 +824,13 @@ class StorageHelper {
 
         if (response.getStatus()) {
             FusabaseLogger.d(TAG, "Put bytes successfully uploaded data.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
+
+            JsonObject result = this.getMetadata(storageReference);
+            StorageMetadata metadata = this.createStorageMetadata(storageReference, result);
 
             uploadTask.setResult(uploadTask.new TaskSnapshot(
                     storageReference,
-                    uploadTask.getResult() != null ? uploadTask.getResult().getMetadata() : null,
+                    metadata,
                     bytes.length,
                     bytes.length));
             if (uploadTask.getProgressListener() != null) {
@@ -830,7 +875,17 @@ class StorageHelper {
             mediaType = MediaType.parse("application/octet-stream");
         }
 
-        RequestBody body = new InputStreamRequestBody(mediaType, stream, contentLength);
+        RequestBody body = new InputStreamRequestBody(
+                mediaType,
+                stream,
+                contentLength,
+                getUploadBufferSize(),
+                (bytesWritten, totalBytes) -> updateStreamingUploadProgress(
+                        storageReference,
+                        uploadTask,
+                        bytesWritten,
+                        totalBytes),
+                () -> checkIfStreamingUploadShouldContinue(uploadTask));
 
         requestHelper.createHttpRequest(Utils.urlBuilder(
                         this.options.getOrdsHost(),
@@ -860,15 +915,16 @@ class StorageHelper {
 
         if (response.getStatus()) {
             FusabaseLogger.d(TAG, "Put stream successfully uploaded data.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
 
-            // If contentLength unknown, use size from response if present
-            long totalBytes = contentLength >= 0 ? contentLength : result.getInt("size", 0);
+            // Do not buffer the upload response body. Fetch compact metadata separately.
+            JsonObject result = this.getMetadata(storageReference);
+            StorageMetadata metadata = this.createStorageMetadata(storageReference, result);
+
+            // If contentLength unknown, use size from metadata.
+            long totalBytes = contentLength >= 0 ? contentLength : metadata.getSizeBytes();
             uploadTask.setResult(uploadTask.new TaskSnapshot(
                     storageReference,
-                    uploadTask.getResult() != null ? uploadTask.getResult().getMetadata() : null,
+                    metadata,
                     totalBytes,
                     totalBytes));
 
@@ -876,6 +932,12 @@ class StorageHelper {
                 uploadTask.getListenerExecutor().post(uploadTask::onProgress);
             }
             return result;
+        }
+
+        if (checkIfTaskIsCancelled(uploadTask)) {
+            uploadTask.setCanceled();
+            throw new StorageException(new Exception("Put stream task canceled."),
+                    StorageErrorCode.CANCELLED);
         }
 
         FusabaseLogger.e(TAG, "Put stream failed with response message " + response.getError());

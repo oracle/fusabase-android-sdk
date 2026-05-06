@@ -42,9 +42,24 @@ import okio.BufferedSink;
  */
 public final class InputStreamRequestBody extends RequestBody {
 
+    private static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
+
+    /** Callback invoked after bytes are written to the network sink. */
+    public interface ProgressCallback {
+        void onProgress(long bytesWritten, long totalBytes) throws IOException;
+    }
+
+    /** Callback invoked before each stream read/write to support pause and cancel. */
+    public interface ControlCallback {
+        void checkIfUploadShouldContinue() throws IOException;
+    }
+
     private final MediaType contentType;
     private final InputStream inputStream;
     private final long contentLength;
+    private final int bufferSize;
+    @Nullable private final ProgressCallback progressCallback;
+    @Nullable private final ControlCallback controlCallback;
 
     /**
      * @param contentType media type
@@ -54,9 +69,29 @@ public final class InputStreamRequestBody extends RequestBody {
     public InputStreamRequestBody(@NonNull MediaType contentType,
                                   @NonNull InputStream inputStream,
                                   long contentLength) {
+        this(contentType, inputStream, contentLength, DEFAULT_BUFFER_SIZE, null, null);
+    }
+
+    /**
+     * @param contentType media type
+     * @param inputStream stream to read from (will be closed by this RequestBody)
+     * @param contentLength length in bytes if known, else -1
+     * @param bufferSize number of bytes to read from the stream per iteration
+     * @param progressCallback optional progress callback invoked after each write
+     * @param controlCallback optional callback for pause/cancel checks before each read/write
+     */
+    public InputStreamRequestBody(@NonNull MediaType contentType,
+                                  @NonNull InputStream inputStream,
+                                  long contentLength,
+                                  int bufferSize,
+                                  @Nullable ProgressCallback progressCallback,
+                                  @Nullable ControlCallback controlCallback) {
         this.contentType = contentType;
         this.inputStream = inputStream;
         this.contentLength = contentLength;
+        this.bufferSize = bufferSize > 0 ? bufferSize : DEFAULT_BUFFER_SIZE;
+        this.progressCallback = progressCallback;
+        this.controlCallback = controlCallback;
     }
 
     @Override
@@ -71,12 +106,25 @@ public final class InputStreamRequestBody extends RequestBody {
 
     @Override
     public void writeTo(@NonNull BufferedSink sink) throws IOException {
-        byte[] buffer = new byte[8192];
+        byte[] buffer = new byte[bufferSize];
+        long bytesWritten = 0;
         int read;
         try (InputStream in = inputStream) {
+            checkIfUploadShouldContinue();
             while ((read = in.read(buffer)) != -1) {
+                checkIfUploadShouldContinue();
                 sink.write(buffer, 0, read);
+                bytesWritten += read;
+                if (progressCallback != null) {
+                    progressCallback.onProgress(bytesWritten, contentLength);
+                }
             }
+        }
+    }
+
+    private void checkIfUploadShouldContinue() throws IOException {
+        if (controlCallback != null) {
+            controlCallback.checkIfUploadShouldContinue();
         }
     }
 }
