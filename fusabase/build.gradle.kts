@@ -194,8 +194,12 @@ val javadocJar by tasks.registering(Jar::class) {
 }
 
 tasks.named<org.jetbrains.dokka.gradle.DokkaTask>("dokkaHtml") {
-    moduleName.set("Oracle® Backend for Firebase Android SDK Reference")
-    moduleVersion.set("Release ${project.version} (G48185-01)")
+    doFirst {
+        delete(outputDirectory.get().asFile)
+    }
+
+    moduleName.set("Oracle® Backend for Firebase Android SDK Reference, Release 26.1.0")
+    moduleVersion.set("Release 26.1.0 (G48185-02)")
 
     dokkaSourceSets.configureEach {
         pluginsMapConfiguration.set(
