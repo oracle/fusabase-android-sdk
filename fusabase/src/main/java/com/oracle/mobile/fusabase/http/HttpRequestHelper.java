@@ -37,6 +37,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
@@ -58,8 +59,6 @@ import okhttp3.Headers;
 import okhttp3.TlsVersion;
 import okio.Buffer;
 import okio.BufferedSource;
-
-import java.util.Collections;
 
 public class HttpRequestHelper {
 
@@ -215,7 +214,7 @@ public class HttpRequestHelper {
         ConnectionSpec spec = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
                 .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
                 .build();
-        builder.connectionSpecs(Collections.singletonList(spec));
+        builder.connectionSpecs(Arrays.asList(spec, ConnectionSpec.CLEARTEXT));
 
         // Check global setting for self-signed certificates
         if (FusabaseApp.allowsSelfSignedCertificates()) {

@@ -33,6 +33,7 @@ import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -47,8 +48,6 @@ import okhttp3.Response;
 import okhttp3.TlsVersion;
 import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
-
-import java.util.Collections;
 
 public class WebSocketClient {
 
@@ -74,7 +73,7 @@ public class WebSocketClient {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .pingInterval(7, TimeUnit.MINUTES)
                 .readTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
-                .connectionSpecs(Collections.singletonList(spec));
+                .connectionSpecs(Arrays.asList(spec, ConnectionSpec.CLEARTEXT));
 
         // Check global setting for self-signed certificates
         if (FusabaseApp.allowsSelfSignedCertificates()) {
