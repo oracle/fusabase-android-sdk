@@ -21,8 +21,13 @@ address you used to sign the OCA:
 Signed-off-by: Your Name <you@example.org>
 ```
 
+<<<<<<< HEAD
 This can be automatically added to pull requests by committing with
 `--sign-off` or `-s`, e.g.
+=======
+This can be automatically added to pull requests by committing with `--sign-off`
+or `-s`, e.g.
+>>>>>>> 5a395e5ad67fb23dbaeefa32314337e4a59f332e
 
 ```text
 git commit --signoff
@@ -46,6 +51,7 @@ can be accepted.
    your changes. Ensure that you reference the issue you created as well.
 1. We will assign the pull request to 2-3 people for review before it is merged.
 
+<<<<<<< HEAD
 Note we merge to an internal repo first before pushing back to GitHub.
 
 ## Code of conduct
@@ -53,6 +59,12 @@ Note we merge to an internal repo first before pushing back to GitHub.
 Follow the [Golden Rule](https://en.wikipedia.org/wiki/Golden_Rule). If you'd
 like more specific guidelines, see the [Contributor Covenant Code of
 Conduct][COC].
+=======
+## Code of conduct
+
+Follow the [Golden Rule](https://en.wikipedia.org/wiki/Golden_Rule). If you'd
+like more specific guidelines, see the [Contributor Covenant Code of Conduct][COC].
+>>>>>>> 5a395e5ad67fb23dbaeefa32314337e4a59f332e
 
 [OCA]: https://oca.opensource.oracle.com
 [COC]: https://www.contributor-covenant.org/version/1/4/code-of-conduct/
