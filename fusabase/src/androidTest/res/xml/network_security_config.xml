@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">phoenix555379.dev3sub4phx.databasede3phx.oraclevcn.com</domain>
-        <trust-anchors>
-            <certificates src="@raw/self_signed_ca"/>
-        </trust-anchors>
-    </domain-config>
-</network-security-config>

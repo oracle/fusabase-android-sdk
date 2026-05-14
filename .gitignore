@@ -19,4 +19,5 @@ local.properties
 /fusabase-gradle-plugin/build/
 /fusabase-gradle-plugin/bin/
 /fusabase/build/
+/fusabase/src/androidTest/
 memory-bank/vector-api-implementation-plan.md
