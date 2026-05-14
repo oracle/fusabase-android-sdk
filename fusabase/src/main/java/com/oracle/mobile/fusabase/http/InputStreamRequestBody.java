@@ -1,5 +1,5 @@
 // Copyright (c) 2015, 2025, Oracle and/or its affiliates.
-//
+
 //-----------------------------------------------------------------------------
 //
 // This software is dual-licensed to you under the Universal Permissive License
