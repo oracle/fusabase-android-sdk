@@ -195,7 +195,7 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                     }
 
                     // Establish a connection with ORDS
-                    if (!webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.OPEN) ||
+                    if (!webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.OPEN) &&
                         !webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.CONNECTING) ) {
                         webSocketController.establishWebSocketConnection();
                     } else {
@@ -220,6 +220,9 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                 listenerData.getReference().get(Source.SERVER).addOnCompleteListener(new OnCompleteListener<Snapshot>() {
                     @Override
                     public void onComplete(Task<Snapshot> task) {
+                            if (!listeners.contains(listenerData)) {
+                                return;
+                            }
 
                             if (task.isSuccessful()) {
                                 // Emitting event directly
@@ -253,6 +256,16 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
      */
     protected void removeListener(ListenerData<K, T> listenerData) {
         FusabaseLogger.d(TAG, "Removing listener for reference: " + ref.getPath() + ", listenerId: " + listenerData.getListenerId());
+        boolean removed = this.listeners.remove(listenerData);
+        if (!removed) {
+            FusabaseLogger.d(TAG, "Listener already removed for reference: " + ref.getPath() + ", listenerId: " + listenerData.getListenerId());
+            return;
+        }
+
+        if (listenerCount > 0) {
+            listenerCount--;
+        }
+
         // Unsubscribe
         JsonObject queryPayload = createWebSocketPayload();
         JsonObject canonicalQueryPayload = sortJsonObject(queryPayload);
@@ -281,14 +294,10 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                 }
                 break;
             case LONG_POLLING:
-                // We need to just remove listener
+                // Listener has already been removed, so polling observes the updated count.
                 pollingController.listenersUpdated();
                 break;
         }
-
-
-        listenerCount--;
-        this.listeners.removeIf(listener -> listenerData.getListenerId() == listener.getListenerId());
     }
 
     protected List<ListenerData<K, T>> getListeners() {
