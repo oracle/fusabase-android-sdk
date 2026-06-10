@@ -42,7 +42,7 @@ public class Options {
     private final String authType;
     private final String objectsType;
     private final String storageBucket;
-    private final IDCSOptions idcsOptions;
+    private final String idcsDomainURL;
     private final String schema;
     private final String name;
     private final String apiVersion;
@@ -60,7 +60,7 @@ public class Options {
         this.authType = builder.authType;
         this.objectsType = builder.objectsType;
         this.storageBucket = builder.storageBucket;
-        this.idcsOptions = builder.idcsOptions;
+        this.idcsDomainURL = builder.idcsDomainURL;
         this.schema = builder.schema;
         this.name = builder.appName;
         this.apiVersion = builder.apiVersion;
@@ -73,7 +73,7 @@ public class Options {
 
     @Override
     public int hashCode() {
-        return Objects.hash(appId, authType, name, authId, idcsOptions,
+        return Objects.hash(appId, authType, name, authId, idcsDomainURL,
                 projectId, objectsType, ordsHost, schema,
                 storageBucket, apiVersion, useSocket, enableLogging, allowsSelfSignedCertificates, uploadChunkSize, longPollingInterval);
     }
@@ -94,7 +94,7 @@ public class Options {
                 Objects.equals(authType, that.authType) &&
                 Objects.equals(objectsType, that.objectsType) &&
                 Objects.equals(storageBucket, that.storageBucket) &&
-                Objects.equals(idcsOptions, that.idcsOptions) &&
+                Objects.equals(idcsDomainURL, that.idcsDomainURL) &&
                 Objects.equals(schema, that.schema) &&
                 Objects.equals(name, that.name) &&
                 Objects.equals(apiVersion, that.apiVersion) &&
@@ -122,7 +122,7 @@ public class Options {
      */
     @NonNull
     public String getDomainURL() {
-        return this.idcsOptions != null ? this.idcsOptions.getDomainURL() : "";
+        return this.idcsDomainURL != null ? this.idcsDomainURL : "";
     }
 
     /**
@@ -189,24 +189,6 @@ public class Options {
      */
     public String getStorageBucket() {
         return this.storageBucket;
-    }
-
-    /**
-     * Gets the client ID.
-     *
-     * @return The client ID.
-     */
-    public String getClientId() {
-        return this.idcsOptions != null ? this.idcsOptions.getClientId() : "";
-    }
-
-    /**
-     * Gets the client secret.
-     *
-     * @return The client secret.
-     */
-    public String getClientSecret() {
-        return this.idcsOptions != null ? this.idcsOptions.getClientSecret() : "";
     }
 
     /**
@@ -284,7 +266,7 @@ public class Options {
         private String authType;
         private String objectsType;
         private String storageBucket;
-        private IDCSOptions idcsOptions;
+        private String idcsDomainURL;
         private String schema;
         private String appName;
         private String apiVersion;
@@ -402,6 +384,17 @@ public class Options {
         }
 
         /**
+         * Sets the IDCS domain URL.
+         *
+         * @param idcsDomainURL The IDCS domain URL.
+         * @return This builder instance.
+         */
+        public Builder setIdcsDomainURL(@NonNull String idcsDomainURL) {
+            this.idcsDomainURL = idcsDomainURL;
+            return this;
+        }
+
+        /**
          * Sets the apiVersion.
          *
          * @param apiVersion The apiVersion.
@@ -429,17 +422,6 @@ public class Options {
          */
         public Builder setEnableLogging(boolean enableLogging){
             this.enableLogging = enableLogging;
-            return this;
-        }
-
-        /**
-         * Sets the IDCS options.
-         *
-         * @param idcsOptions The IDCS options.
-         * @return This builder instance.
-         */
-        public Builder setIDCSOptions(@NonNull IDCSOptions idcsOptions) {
-            this.idcsOptions = idcsOptions;
             return this;
         }
 

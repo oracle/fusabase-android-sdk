@@ -39,7 +39,6 @@ public final class FusabaseConstants {
     public static final String PROJECT_ID_KEY = "fusabase_project_id";
     public static final String AUTH_ID_KEY = "fusabase_auth_id";
     public static final String APP_ID_KEY = "fusabase_app_id";
-    public static final String IDCS_CONFIG_KEY = "fusabase_idcs_config";
     public static final String UPLOAD_CHUNK_SIZE_KEY = "fusabase_upload_chunk_size";
     public static final String LONG_POLLING_INTERVAL_KEY = "fusabase_long_polling_interval";
     public static final String ENABLE_LOGGING_KEY = "fusabase_enableLogging";
@@ -53,11 +52,8 @@ public final class FusabaseConstants {
     public static final boolean DEFAULT_ALLOWS_SELF_SIGNED_CERTIFICATES = false;
     public static final String DEFAULT_API_VERSION = "2.0";
 
-    // IDCS configuration keys
-    public static final String CLIENT_ID = "fusabase_clientId";
-    public static final String CLIENT_SECRET = "fusabase_clientSecret";
-    public static final String SELF_REGISTRATION_PROFILE = "fusabase_selfRegistrationProfile";
-    public static final String DOMAIN_URL = "fusabase_domain_url";
+    // IDCS configuration keys.
+    public static final String IDCS_DOMAIN_URL = "fusabase_idcs_domain_url";
 
     // Authentication TYPES
     public static final String AUTH_TYPE_BASE = "base";

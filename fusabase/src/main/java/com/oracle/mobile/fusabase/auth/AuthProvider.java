@@ -28,6 +28,8 @@ package com.oracle.mobile.fusabase.auth;
 
 import androidx.annotation.NonNull;
 
+import com.oracle.mobile.fusabase.utils.Utils;
+
 /**
  * Abstract Class AuthProvider
  * Represents an authentication provider that helps in performing social login
@@ -52,6 +54,34 @@ public abstract class AuthProvider {
     protected final static String SOCIAL = "social";
 
     protected abstract String getAuthUrl();
+
+    @NonNull
+    protected static String buildSocialAuthUrl(@NonNull FusabaseAuth auth,
+                                               @NonNull String providerId) {
+        Config config = auth.getConfig();
+        if (Config.IDCS_AUTH_TYPE.equals(config.authType)) {
+            return Utils.addQueryParameterToURL(Utils.urlBuilder(config.domainURL,
+                            UNDERSCORE_PATH,
+                            BAAS_SERVICES,
+                            IDM_PATH,
+                            IDCS_PATH,
+                            config.projectId,
+                            SOCIAL),
+                    DEVICE, MOBILE,
+                    API_KEY, config.appId);
+        }
+
+        return Utils.addQueryParameterToURL(Utils.urlBuilder(config.domainURL,
+                        UNDERSCORE_PATH,
+                        BAAS_SERVICES,
+                        IDM_PATH,
+                        ONPREM_PATH,
+                        config.projectId,
+                        SOCIAL_IDP),
+                METHOD, providerId,
+                DEVICE, MOBILE,
+                API_KEY, config.appId);
+    }
 
     private final String provider;
     private final String signInMethod;

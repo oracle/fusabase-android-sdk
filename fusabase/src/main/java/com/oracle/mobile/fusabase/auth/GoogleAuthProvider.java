@@ -26,22 +26,8 @@
 
 package com.oracle.mobile.fusabase.auth;
 
-import static com.oracle.mobile.fusabase.auth.AuthProvider.API_KEY;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.BAAS_SERVICES;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.DEVICE;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.IDCS_PATH;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.IDM_PATH;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.METHOD;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.MOBILE;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.ONPREM_PATH;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.SOCIAL;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.SOCIAL_IDP;
-import static com.oracle.mobile.fusabase.auth.AuthProvider.UNDERSCORE_PATH;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import com.oracle.mobile.fusabase.utils.Utils;
 
 /**
  * Represents a Google authentication provider.
@@ -70,30 +56,7 @@ public class GoogleAuthProvider extends FederatedAuthProvider {
      */
     public GoogleAuthProvider(@NonNull FusabaseAuth auth) {
         super();
-        if(auth.getConfig().authType.equals("idcs")) {
-            this.AUTH_URL =
-                    Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
-                                    UNDERSCORE_PATH,
-                                    BAAS_SERVICES,
-                                    IDM_PATH,
-                                    IDCS_PATH,
-                                    auth.getConfig().projectId,
-                                    SOCIAL),
-                            DEVICE, MOBILE,
-                            API_KEY, auth.getConfig().appId
-                    );
-        } else
-            AUTH_URL = Utils.addQueryParameterToURL(Utils.urlBuilder(auth.getConfig().domainURL,
-                            Config.UNDERSCORE_PATH,
-                            BAAS_SERVICES,
-                            Config.IDM_PATH,
-                            ONPREM_PATH,
-                            auth.getConfig().projectId,
-                            SOCIAL_IDP),
-                    METHOD, PROVIDER_ID,
-                    DEVICE, MOBILE,
-                    API_KEY, auth.getConfig().appId
-            );;
+        this.AUTH_URL = AuthProvider.buildSocialAuthUrl(auth, PROVIDER_ID);
     }
 
     /**

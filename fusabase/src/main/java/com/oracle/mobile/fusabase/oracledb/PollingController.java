@@ -61,7 +61,7 @@ class PollingController<K extends Reference, T extends Snapshot> {
     private final static int POLLING_INTERVAL = 10;
 
     /** Scheduled executor service for managing polling tasks */
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private ScheduledExecutorService scheduler;
 
     /** Atomic flag indicating whether polling is currently active */
     private final AtomicBoolean isPolling = new AtomicBoolean(false);
@@ -111,10 +111,17 @@ class PollingController<K extends Reference, T extends Snapshot> {
 
         FusabaseLogger.d("PollingController", "PollingStarted");
         try {
+            if (this.scheduler == null || this.scheduler.isShutdown() || this.scheduler.isTerminated()) {
+                this.scheduler = Executors.newScheduledThreadPool(1);
+            }
             this.pollingFuture = scheduler.scheduleWithFixedDelay(this::poll, 0, POLLING_INTERVAL, TimeUnit.SECONDS);
         } catch (RuntimeException e) {
             this.isPolling.set(false);
             this.pollingFuture = null;
+            if (this.scheduler != null) {
+                this.scheduler.shutdownNow();
+                this.scheduler = null;
+            }
             throw e;
         }
     }
@@ -201,6 +208,10 @@ class PollingController<K extends Reference, T extends Snapshot> {
         if (this.pollingFuture != null) {
             this.pollingFuture.cancel(false);
             this.pollingFuture = null;
+        }
+        if (this.scheduler != null) {
+            this.scheduler.shutdownNow();
+            this.scheduler = null;
         }
     }
 

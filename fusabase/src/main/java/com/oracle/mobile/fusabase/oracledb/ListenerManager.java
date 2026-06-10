@@ -74,8 +74,6 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
     private static final String TAG = "FusabaseOradb";
     /** List of all registered listeners managed by this instance */
     private final List<ListenerData<K, T>> listeners;
-    /** Current count of active listeners */
-    private int listenerCount;
     /** Executor for handling listener operations */
     private final Executor executor;
     /** WebSocket controller for real-time communication */
@@ -99,7 +97,6 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
     ListenerManager(@NonNull FusabaseOracledb oracledb,
                     @NonNull K ref) {
         this.listeners = new CopyOnWriteArrayList<>();
-        this.listenerCount = 0;
         this.executor = Executors.newSingleThreadExecutor();
         this.oracledb = oracledb;
         this.ref = ref;
@@ -149,8 +146,6 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                 options.activity,
                 options.executor,
                 options.metadataChanges);
-
-        listenerCount++;
 
         listeners.add(listenerData);
 
@@ -262,10 +257,6 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
             return;
         }
 
-        if (listenerCount > 0) {
-            listenerCount--;
-        }
-
         // Unsubscribe
         JsonObject queryPayload = createWebSocketPayload();
         JsonObject canonicalQueryPayload = sortJsonObject(queryPayload);
@@ -305,7 +296,7 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
     }
 
     protected int getListenerCount() {
-        return this.listenerCount;
+        return this.listeners.size();
     }
 
     // listenerId is queryId
