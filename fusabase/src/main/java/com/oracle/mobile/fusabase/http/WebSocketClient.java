@@ -33,7 +33,9 @@ import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -54,9 +56,10 @@ public class WebSocketClient {
     private final static String TAG = "fusabase";
     private final static int TIMEOUT = 4*60*1000;
     private final OkHttpClient client;
-    private WebSocket webSocket;
-    private State state;
+    private volatile WebSocket webSocket;
+    private volatile State state;
     private final WebSocketCallback webSocketCallback;
+    private final Queue<String> pendingMessages;
 
     public enum State {
         CONNECTING,
@@ -83,6 +86,7 @@ public class WebSocketClient {
         this.client = builder.build();
         this.webSocketCallback = webSocketCallback;
         this.state = State.CLOSED;
+        this.pendingMessages = new ArrayDeque<>();
     }
 
     @NonNull
@@ -101,7 +105,9 @@ public class WebSocketClient {
         webSocket = client.newWebSocket(request, new WebSocketListener() {
             @Override
             public void onOpen(WebSocket webSocket, Response response) {
+                state = State.OPEN;
                 FusabaseLogger.d(TAG, "Connected to WebSocket server!");
+                flushPendingMessages();
                 webSocketCallback.onOpen();
             }
 
@@ -114,6 +120,7 @@ public class WebSocketClient {
 
             @Override
             public void onClosing(WebSocket webSocket, int code, String reason) {
+                state = State.CLOSING;
                 FusabaseLogger.d(TAG, "Closing connection to WebSocket " + reason);
                 webSocketCallback.onClosing();
                 webSocket.close(1000, null);
@@ -121,18 +128,19 @@ public class WebSocketClient {
 
             @Override
             public void onClosed(WebSocket webSocket, int code, String reason) {
+                state = State.CLOSED;
                 FusabaseLogger.d(TAG, "Closed connection to WebSocket " + reason);
                 webSocketCallback.onClosed();
             }
 
             @Override
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                state = State.FAILED;
                 FusabaseLogger.d(TAG, "Failure occureed in connection with WebSocket " + t.getMessage());
                 webSocketCallback.onFailure();
             }
         });
 
-        this.state = State.OPEN;
         return webSocket;
     }
 
@@ -145,15 +153,37 @@ public class WebSocketClient {
         return createWebSocketConnection(request);
     }
 
-    public void sendMessage(String message) {
+    public synchronized void sendMessage(String message) {
         // WebSocket messages may contain sensitive payloads; never log contents.
-        FusabaseLogger.d(TAG, "Sending message through WebSocket (len=" + (message == null ? 0 : message.length()) + ")");
-        webSocket.send(message);
+        if (this.state == State.OPEN && this.webSocket != null) {
+            FusabaseLogger.d(TAG, "Sending message through WebSocket (len=" + (message == null ? 0 : message.length()) + ")");
+            webSocket.send(message);
+            return;
+        }
+
+        if (this.state == State.CONNECTING) {
+            FusabaseLogger.d(TAG, "Queueing WebSocket message until connection opens (len="
+                    + (message == null ? 0 : message.length()) + ")");
+            this.pendingMessages.add(message);
+            return;
+        }
+
+        FusabaseLogger.w(TAG, "Cannot send WebSocket message because connection state is " + this.state);
     }
 
     public void close() {
         if (webSocket != null) {
+            this.state = State.CLOSING;
             webSocket.close(1000, "Client closed connection");
+        }
+    }
+
+    private synchronized void flushPendingMessages() {
+        while (!this.pendingMessages.isEmpty() && this.webSocket != null) {
+            String message = this.pendingMessages.poll();
+            FusabaseLogger.d(TAG, "Sending queued WebSocket message (len="
+                    + (message == null ? 0 : message.length()) + ")");
+            this.webSocket.send(message);
         }
     }
 

@@ -28,7 +28,6 @@ package com.oracle.mobile.fusabase;
 
 import androidx.annotation.NonNull;
 
-import com.oracle.mobile.fusabase.models.IDCSOptions;
 import com.oracle.mobile.fusabase.models.Options;
 
 import java.util.Objects;
@@ -169,24 +168,6 @@ public class FusabaseOptions {
      */
     public String getStorageBucket() {
         return this.options.getStorageBucket();
-    }
-
-    /**
-     * Gets the client ID.
-     *
-     * @return The client ID.
-     */
-    public String getClientId() {
-        return this.options.getClientId();
-    }
-
-    /**
-     * Gets the client secret.
-     *
-     * @return The client secret.
-     */
-    public String getClientSecret() {
-        return this.options.getClientSecret();
     }
 
     /**
@@ -399,13 +380,13 @@ public class FusabaseOptions {
         }
 
         /**
-         * Sets the IDCS options.
+         * Sets the IDCS domain URL.
          *
-         * @param idcsOptions The IDCS options.
+         * @param idcsDomainURL The IDCS domain URL.
          * @return This builder instance.
          */
-        public Builder setIDCSOptions(@NonNull IDCSOptions idcsOptions) {
-            optionsBuilder.setIDCSOptions(idcsOptions);
+        public Builder setIdcsDomainURL(@NonNull String idcsDomainURL) {
+            optionsBuilder.setIdcsDomainURL(idcsDomainURL);
             return this;
         }
 

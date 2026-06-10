@@ -123,9 +123,7 @@ class WebSocketController {
      * @return true if the query should be deregistered, false otherwise
      */
     protected boolean shouldDeregisterQuery (Integer queryId) {
-        List<ListenerData<? extends Reference, ? extends Snapshot>> registeredListeners =
-            this.registeredQuery.get(queryId);
-        return registeredListeners != null && registeredListeners.isEmpty();
+        return !this.registeredQuery.containsKey(queryId);
     }
 
     /**
@@ -144,7 +142,7 @@ class WebSocketController {
      * @return true if the query should be registered, false otherwise
      */
     protected boolean shouldRegisterQuery (Integer queryId) {
-        return !shouldDeregisterQuery(queryId);
+        return !this.registeredQuery.containsKey(queryId);
     }
 
     /**
@@ -158,6 +156,7 @@ class WebSocketController {
             .add("success", 1)
             .build();
         this.messageQueue.add(messageObject);
+        processQueue(queryId);
     }
 
     /**
@@ -356,7 +355,7 @@ class WebSocketController {
         return "";
     }
 
-    private JsonObject getBaseSnapshotToken() throws FusabaseOracledbException {
+    private JsonObject getSnapshotTokenForAuthPath(@NonNull String authPath) throws FusabaseOracledbException {
         HttpRequestHelper requestHelper = new HttpRequestHelper(oracledb.getOracledbSettings().getMaxAttempt());
 
         // Populate headers
@@ -377,7 +376,7 @@ class WebSocketController {
             requestHelper.createHttpRequest(Utils.urlBuilder(this.oracledb.getOracledbSettings().getOptions().getOrdsHost(),
                     QueryHelper.BAAS_SERVICE,
                     QueryHelper.IDM,
-                    QueryHelper.ONPREM,
+                    authPath,
                     this.oracledb.getOracledbSettings().getOptions().getProjectId(),
                     QueryHelper.AUTHORIZE_SNAPSHOT),
                 "GET",
@@ -399,9 +398,9 @@ class WebSocketController {
         JsonObject result = reader.readObject();
 
         if (response.getStatus())
-            FusabaseLogger.i("FusabaseOradb", "authorizeSnapshot");
+            FusabaseLogger.i("FusabaseOradb", "authorizeSnapshot for " + authPath);
         else {
-            FusabaseLogger.w("FusabaseOradb", "authorizeSnapshot failed with response message " + response.getError());
+            FusabaseLogger.w("FusabaseOradb", "authorizeSnapshot for " + authPath + " failed with response message " + response.getError());
             throw new FusabaseOracledbException("Authorize Snapshot failed with following message " + response.getError(),
                 FusabaseOracledbException.Code.fromCode(response.getCode()));
         }
@@ -410,58 +409,12 @@ class WebSocketController {
         return result;
     }
 
+    private JsonObject getBaseSnapshotToken() throws FusabaseOracledbException {
+        return getSnapshotTokenForAuthPath(QueryHelper.ONPREM);
+    }
+
     private JsonObject getIDCSSnapshotToken() throws FusabaseOracledbException {
-        HttpRequestHelper requestHelper = new HttpRequestHelper(oracledb.getOracledbSettings().getMaxAttempt());
-
-        // Populate headers
-        Map<String, String> headers = new HashMap<>();
-
-        String authHeader = this.buildAuthorizationHeader();
-        if (authHeader.isEmpty()) {
-            throw new FusabaseOracledbException("User Not logged in", FusabaseOracledbException.Code.UNAUTHENTICATED);
-        }
-
-        headers.put("Authorization", authHeader);
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.oracledb.getOracledbSettings().getOptions().getAppId());
-
-        try {
-            // Create the request
-            requestHelper.createHttpRequest(Utils.urlBuilder(this.oracledb.getOracledbSettings().getOptions().getOrdsHost(),
-                    QueryHelper.BAAS_SERVICE,
-                    QueryHelper.IDM,
-                    QueryHelper.ONPREM,
-                    this.oracledb.getOracledbSettings().getOptions().getProjectId(),
-                    QueryHelper.AUTHORIZE_SNAPSHOT),
-                "GET",
-                headers,
-                queryParameters);
-        } catch (FusabaseException e) {
-            throw new FusabaseOracledbException(e.getMessage(), FusabaseOracledbException.Code.INTERNAL);
-        }
-
-        HttpResponse response;
-
-        try {
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            throw new FusabaseOracledbException(e.getMessage(), FusabaseOracledbException.Code.NETWORK_ERROR, e);
-        }
-
-        JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-        JsonObject result = reader.readObject();
-
-        if (response.getStatus())
-            FusabaseLogger.i("FusabaseOradb", "authorizeSnapshot for IDCS");
-        else {
-            FusabaseLogger.w("FusabaseOradb", "authorizeSnapshot for IDCS failed with response message " + response.getError());
-            throw new FusabaseOracledbException("Authorize Snapshot failed with following message " + response.getError(),
-                FusabaseOracledbException.Code.fromCode(response.getCode()));
-        }
-
-        reader.close();
-        return result;
+        return getSnapshotTokenForAuthPath(QueryHelper.IDCS);
     }
 
     /**
@@ -471,10 +424,10 @@ class WebSocketController {
      * @throws FusabaseOracledbException if the token cannot be retrieved
      */
     private JsonObject getSnapshotToken() throws FusabaseOracledbException {
-        if(this.oracledb.getOracledbSettings().getOptions().getAuthType().equals("base"))
-            return this.getBaseSnapshotToken();
-        else
+        if (this.oracledb.getOracledbSettings().getOptions().getAuthType().equals("idcs")) {
             return this.getIDCSSnapshotToken();
+        }
+        return this.getBaseSnapshotToken();
     }
 
     /**

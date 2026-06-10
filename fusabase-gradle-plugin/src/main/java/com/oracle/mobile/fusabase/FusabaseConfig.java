@@ -44,6 +44,10 @@ import jakarta.json.JsonValue;
  * Gradle plugin that reads fusabase-config.json and generates Android string resources.
  */
 public class FusabaseConfig implements Plugin<Project> {
+    private static final String AUTH_TYPE_KEY = "auth_type";
+    private static final String IDCS_AUTH_TYPE = "idcs";
+    private static final String IDCS_DOMAIN_URL_KEY = "idcs_domain_url";
+
     @Override
     public void apply(Project project) {
 
@@ -57,6 +61,7 @@ public class FusabaseConfig implements Plugin<Project> {
              JsonReader objectReader = Json.createReader(configReader)) {
 
             JsonObject configJson = objectReader.readObject();
+            validateConfig(configJson);
 
             File resourceDirectory = new File(project.getProjectDir(), "src/main/res/values");
             File outputFile = new File(resourceDirectory, "fusabase.generated.xml");
@@ -87,9 +92,31 @@ public class FusabaseConfig implements Plugin<Project> {
                 resourceWriter.println("</resources>");
             }
 
+        } catch (GradleException e) {
+            throw e;
         } catch (Exception e) {
             throw new GradleException("Cannot read fusabase-config.json. Please make sure that " +
                     "the file is not corrupted.");
         }
+    }
+
+    private static void validateConfig(JsonObject configJson) {
+        if (!IDCS_AUTH_TYPE.equals(getString(configJson, AUTH_TYPE_KEY))) {
+            return;
+        }
+
+        String idcsDomainUrl = getString(configJson, IDCS_DOMAIN_URL_KEY);
+        if (idcsDomainUrl == null || idcsDomainUrl.trim().isEmpty()) {
+            throw new GradleException("fusabase-config.json must define idcs_domain_url when auth_type is idcs.");
+        }
+    }
+
+    private static String getString(JsonObject configJson, String key) {
+        if (!configJson.containsKey(key) || configJson.isNull(key)) {
+            return null;
+        }
+
+        JsonValue value = configJson.get(key);
+        return value.getValueType() == JsonValue.ValueType.STRING ? configJson.getString(key) : null;
     }
 }

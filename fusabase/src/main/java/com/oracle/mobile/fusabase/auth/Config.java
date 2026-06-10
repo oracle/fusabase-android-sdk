@@ -28,12 +28,14 @@ package com.oracle.mobile.fusabase.auth;
 
 import androidx.annotation.NonNull;
 
+import com.oracle.mobile.fusabase.utils.Utils;
+
 class Config {
 
     protected static String AUTHENTICATE_REST_EP = "authenticate";
     protected static String SELF_REGISTER_EP = "useradd";
     protected static String UPDATE_PASSWORD_HELPER = "changePassword";
-    protected static String UPDATE_PROFILE_HELPER = "updateProfile";
+    protected static String UPDATE_PROFILE_HELPER = "profile";
     protected static String REVOKE_REFRESH_TOKEN = "rf/revoke";
     protected static String SEND_EMAIL_VERIFICATION = "sendemail";
     protected static String SEND_PASSWORD_RESET_EMAIL = "sendemail";
@@ -86,5 +88,32 @@ class Config {
     @NonNull
     protected String getDomainURL() {
         return domainURL;
+    }
+
+    @NonNull
+    protected String getAuthPathSegment() {
+        return IDCS_AUTH_TYPE.equals(this.authType) ? IDCS_AUTH_TYPE : ON_PREM_PATH;
+    }
+
+    @NonNull
+    protected String getAuthBaseEndpoint(@NonNull String endpoint) {
+        return Utils.urlBuilder(this.domainURL,
+                UNDERSCORE_PATH,
+                BAAS_SERVICES_PATH,
+                IDM_PATH,
+                getAuthPathSegment(),
+                this.projectId,
+                endpoint);
+    }
+
+    @NonNull
+    protected String getOnPremAuthBaseEndpoint(@NonNull String endpoint) {
+        return Utils.urlBuilder(this.domainURL,
+                UNDERSCORE_PATH,
+                BAAS_SERVICES_PATH,
+                IDM_PATH,
+                ON_PREM_PATH,
+                this.projectId,
+                endpoint);
     }
 }

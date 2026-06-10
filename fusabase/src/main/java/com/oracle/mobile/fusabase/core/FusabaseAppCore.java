@@ -29,8 +29,6 @@ package com.oracle.mobile.fusabase.core;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.AUTH_TYPE_BASE;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.AUTH_TYPE_IDCS;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.AUTH_TYPE_LDAP;
-import static com.oracle.mobile.fusabase.core.FusabaseConstants.CLIENT_ID;
-import static com.oracle.mobile.fusabase.core.FusabaseConstants.CLIENT_SECRET;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.ALLOW_SELF_SIGNED_CERTIFICATES_KEY;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_ALLOWS_SELF_SIGNED_CERTIFICATES;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_API_VERSION;
@@ -38,8 +36,7 @@ import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_ENABLE_L
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_LONG_POLLING_INTERVAL;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_UPLOAD_CHUNK_SIZE;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_USE_SOCKET;
-import static com.oracle.mobile.fusabase.core.FusabaseConstants.DOMAIN_URL;
-import static com.oracle.mobile.fusabase.core.FusabaseConstants.SELF_REGISTRATION_PROFILE;
+import static com.oracle.mobile.fusabase.core.FusabaseConstants.IDCS_DOMAIN_URL;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -49,7 +46,6 @@ import androidx.annotation.NonNull;
 import com.oracle.mobile.fusabase.FusabaseException;
 import com.oracle.mobile.fusabase.FusabaseOptions;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
-import com.oracle.mobile.fusabase.models.IDCSOptions;
 import com.oracle.mobile.fusabase.models.Options;
 import com.oracle.mobile.fusabase.utils.Utils;
 
@@ -118,13 +114,7 @@ public class FusabaseAppCore {
                     break;
                 }
                 case AUTH_TYPE_IDCS: {
-                    IDCSOptions idcsOptions = new IDCSOptions.Builder()
-                        .setClientId(Utils.getConfigValue(context, CLIENT_ID))
-                        .setClientSecret(Utils.getConfigValue(context,CLIENT_SECRET))
-                        .setDomainURL(Utils.getConfigValue(context,DOMAIN_URL))
-                                .build();
-                        optionsBuilder.setIDCSOptions(idcsOptions);
-
+                    optionsBuilder.setIdcsDomainURL(Utils.getConfigValue(context, IDCS_DOMAIN_URL));
                     FusabaseLogger.d("Auth_type idcs read from resources.");
                     break;
                 }
@@ -136,7 +126,7 @@ public class FusabaseAppCore {
 
         } catch (Resources.NotFoundException e) {
             FusabaseLogger.e(TAG, "Required configuration resource not found: " + e.getMessage());
-            throw new IllegalStateException("Missing required configuration. Please check your fusabase_config.json file.", e);
+            throw new IllegalStateException("Missing required configuration. Please check your fusabase-config.json file.", e);
         } catch (Exception e) {
             FusabaseLogger.e(TAG, "Error reading configuration: " + e.getMessage());
             throw new IllegalStateException("Failed to initialize FusabaseApp due to configuration error.", e);

@@ -94,11 +94,8 @@ public class FusabaseAuth {
                         app.fusabaseOptions.getAppId(),
                         app.fusabaseOptions.getProjectId(),
                         app.fusabaseOptions.getAuthType(),
-                        app.fusabaseOptions.getClientSecret(),
-                        app.fusabaseOptions.getClientId(),
                         app.fusabaseOptions.getOrdsHost(),
-                        app.fusabaseOptions.getDomainURL(),
-                        "");
+                        app.fusabaseOptions.getDomainURL());
                 this.authHelper = new IDCSAuthHelper((IDCSConfig) this.config, this);
                 break;
             default:
