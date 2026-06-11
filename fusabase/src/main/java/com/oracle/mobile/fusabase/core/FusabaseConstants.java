@@ -42,14 +42,12 @@ public final class FusabaseConstants {
     public static final String UPLOAD_CHUNK_SIZE_KEY = "fusabase_upload_chunk_size";
     public static final String LONG_POLLING_INTERVAL_KEY = "fusabase_long_polling_interval";
     public static final String ENABLE_LOGGING_KEY = "fusabase_enableLogging";
-    public static final String ALLOW_SELF_SIGNED_CERTIFICATES_KEY = "fusabase_allowsSelfSignedCertificates";
 
     // Default values
     public static final int DEFAULT_UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024; // 1MB
     public static final long DEFAULT_LONG_POLLING_INTERVAL = 29; // 29 seconds
     public static final boolean DEFAULT_USE_SOCKET = false;
     public static final boolean DEFAULT_ENABLE_LOGGING = false;
-    public static final boolean DEFAULT_ALLOWS_SELF_SIGNED_CERTIFICATES = false;
     public static final String DEFAULT_API_VERSION = "2.0";
 
     // IDCS configuration keys.

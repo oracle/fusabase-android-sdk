@@ -28,20 +28,12 @@ package com.oracle.mobile.fusabase.http;
 
 import androidx.annotation.NonNull;
 
-import com.oracle.mobile.fusabase.FusabaseApp;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionSpec;
 import okhttp3.OkHttpClient;
@@ -77,11 +69,6 @@ public class WebSocketClient {
                 .pingInterval(7, TimeUnit.MINUTES)
                 .readTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
                 .connectionSpecs(Arrays.asList(spec, ConnectionSpec.CLEARTEXT));
-
-        // Check global setting for self-signed certificates
-        if (FusabaseApp.allowsSelfSignedCertificates()) {
-            configureSelfSignedCertificates(builder);
-        }
 
         this.client = builder.build();
         this.webSocketCallback = webSocketCallback;
@@ -184,56 +171,6 @@ public class WebSocketClient {
             FusabaseLogger.d(TAG, "Sending queued WebSocket message (len="
                     + (message == null ? 0 : message.length()) + ")");
             this.webSocket.send(message);
-        }
-    }
-
-    /**
-     * Configures the OkHttpClient to accept self-signed certificates.
-     * WARNING: This reduces security and should only be used for testing.
-     */
-    private void configureSelfSignedCertificates(OkHttpClient.Builder builder) {
-        try {
-            // Create a trust manager that does not validate certificate chains
-            final TrustManager[] trustAllCerts = new TrustManager[]{
-                    new X509TrustManager() {
-                        @Override
-                        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                            // Accept all client certificates
-                        }
-
-                        @Override
-                        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                            // Accept all server certificates
-                        }
-
-                        @Override
-                        public X509Certificate[] getAcceptedIssuers() {
-                            return new X509Certificate[]{};
-                        }
-                    }
-            };
-
-            // Install the all-trusting trust manager
-            final SSLContext sslContext = SSLContext.getInstance("SSL");
-            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-
-            // Create an all-trusting host name verifier
-            final HostnameVerifier allHostsValid = new HostnameVerifier() {
-                @Override
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            };
-
-            builder.sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
-                   .hostnameVerifier(allHostsValid);
-
-            FusabaseLogger.w(TAG, "WARNING: WebSocketClient configured to accept self-signed certificates. " +
-                    "This reduces security and should only be used for testing.");
-
-        } catch (Exception e) {
-            FusabaseLogger.e(TAG, "Failed to configure self-signed certificate support", e);
-            throw new RuntimeException("Failed to configure SSL for self-signed certificates", e);
         }
     }
 

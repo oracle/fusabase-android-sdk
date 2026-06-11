@@ -29,8 +29,6 @@ package com.oracle.mobile.fusabase.core;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.AUTH_TYPE_BASE;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.AUTH_TYPE_IDCS;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.AUTH_TYPE_LDAP;
-import static com.oracle.mobile.fusabase.core.FusabaseConstants.ALLOW_SELF_SIGNED_CERTIFICATES_KEY;
-import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_ALLOWS_SELF_SIGNED_CERTIFICATES;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_API_VERSION;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_ENABLE_LOGGING;
 import static com.oracle.mobile.fusabase.core.FusabaseConstants.DEFAULT_LONG_POLLING_INTERVAL;
@@ -96,12 +94,6 @@ public class FusabaseAppCore {
                 optionsBuilder.setEnableLogging(Boolean.parseBoolean(Utils.getConfigValue(context, FusabaseConstants.ENABLE_LOGGING_KEY)));
             } catch (Resources.NotFoundException e) {
                 optionsBuilder.setEnableLogging(DEFAULT_ENABLE_LOGGING);
-            }
-
-            try {
-                optionsBuilder.setAllowsSelfSignedCertificates(Boolean.parseBoolean(Utils.getConfigValue(context, ALLOW_SELF_SIGNED_CERTIFICATES_KEY)));
-            } catch (Resources.NotFoundException e) {
-                optionsBuilder.setAllowsSelfSignedCertificates(DEFAULT_ALLOWS_SELF_SIGNED_CERTIFICATES);
             }
 
             optionsBuilder.setProjectId(Utils.getConfigValue(context, FusabaseConstants.PROJECT_ID_KEY))
