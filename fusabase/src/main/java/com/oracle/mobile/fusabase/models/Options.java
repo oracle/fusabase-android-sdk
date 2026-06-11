@@ -48,7 +48,6 @@ public class Options {
     private final String apiVersion;
     private final boolean useSocket;
     private final boolean enableLogging;
-    private final boolean allowsSelfSignedCertificates;
     private final int uploadChunkSize;
     private final long longPollingInterval;
 
@@ -66,7 +65,6 @@ public class Options {
         this.apiVersion = builder.apiVersion;
         this.useSocket = builder.useSocket;
         this.enableLogging = builder.enableLogging;
-        this.allowsSelfSignedCertificates = builder.allowsSelfSignedCertificates;
         this.uploadChunkSize = builder.uploadChunkSize;
         this.longPollingInterval = builder.longPollingInterval;
     }
@@ -75,7 +73,7 @@ public class Options {
     public int hashCode() {
         return Objects.hash(appId, authType, name, authId, idcsDomainURL,
                 projectId, objectsType, ordsHost, schema,
-                storageBucket, apiVersion, useSocket, enableLogging, allowsSelfSignedCertificates, uploadChunkSize, longPollingInterval);
+                storageBucket, apiVersion, useSocket, enableLogging, uploadChunkSize, longPollingInterval);
     }
 
     @Override
@@ -100,7 +98,6 @@ public class Options {
                 Objects.equals(apiVersion, that.apiVersion) &&
                 useSocket == that.useSocket &&
                 enableLogging == that.enableLogging &&
-                allowsSelfSignedCertificates == that.allowsSelfSignedCertificates &&
                 uploadChunkSize == that.uploadChunkSize &&
                 longPollingInterval == that.longPollingInterval;
     }
@@ -228,15 +225,6 @@ public class Options {
     }
 
     /**
-     * Gets the allowsSelfSignedCertificates config. Returns true if self-signed certificates
-     * are allowed for testing purposes, else false for secure production use.
-     * @return The allowsSelfSignedCertificates
-     */
-    public boolean allowsSelfSignedCertificates() {
-        return this.allowsSelfSignedCertificates;
-    }
-
-    /**
      * Gets the upload chunk size for file uploads.
      *
      * @return The upload chunk size in bytes.
@@ -272,7 +260,6 @@ public class Options {
         private String apiVersion;
         private boolean useSocket;
         private boolean enableLogging;
-        private boolean allowsSelfSignedCertificates;
         private int uploadChunkSize;
         private long longPollingInterval;
 
@@ -444,17 +431,6 @@ public class Options {
          */
         public Builder setLongPollingInterval(long longPollingInterval) {
             this.longPollingInterval = longPollingInterval;
-            return this;
-        }
-
-        /**
-         * Sets whether self-signed certificates are allowed for testing purposes.
-         *
-         * @param allowsSelfSignedCertificates true to allow self-signed certificates, false for secure production use
-         * @return This builder instance.
-         */
-        public Builder setAllowsSelfSignedCertificates(boolean allowsSelfSignedCertificates) {
-            this.allowsSelfSignedCertificates = allowsSelfSignedCertificates;
             return this;
         }
 

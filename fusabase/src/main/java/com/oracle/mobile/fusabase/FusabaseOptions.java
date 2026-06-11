@@ -225,20 +225,6 @@ public class FusabaseOptions {
     }
 
     /**
-     * Gets the allowsSelfSignedCertificates config. Returns true if self-signed certificates
-     * are allowed for testing purposes, else false for secure production use.
-     * <p>
-     * <strong>WARNING:</strong> This option should only be enabled for testing and development.
-     * Allowing self-signed certificates reduces security and should never be used in production.
-     * </p>
-     *
-     * @return The allowsSelfSignedCertificates setting
-     */
-    public boolean allowsSelfSignedCertificates() {
-        return this.options.allowsSelfSignedCertificates();
-    }
-
-    /**
      * Class FusabaseOptions.Builder
      * Builder for creating new instances of FusabaseOptions.
      *
@@ -409,21 +395,6 @@ public class FusabaseOptions {
          */
         public Builder setLongPollingInterval(long longPollingInterval) {
             optionsBuilder.setLongPollingInterval(longPollingInterval);
-            return this;
-        }
-
-        /**
-         * Sets whether self-signed certificates are allowed for testing purposes.
-         * <p>
-         * <strong>WARNING:</strong> This should only be set to true for testing and development.
-         * Allowing self-signed certificates reduces security and should never be used in production.
-         * </p>
-         *
-         * @param allowsSelfSignedCertificates true to allow self-signed certificates, false for secure production use
-         * @return This builder instance.
-         */
-        public Builder setAllowsSelfSignedCertificates(boolean allowsSelfSignedCertificates) {
-            optionsBuilder.setAllowsSelfSignedCertificates(allowsSelfSignedCertificates);
             return this;
         }
 
