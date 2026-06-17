@@ -8,6 +8,8 @@ An Android SDK for Oracle Backend for Firebase (Fusabase) that provides authenti
 - Storage APIs (upload/download, metadata, listing)
 - Automatic initialization from `fusabase-config.json` via a Gradle plugin
 
+This Oracle Backend for Firebase Android SDK follows the Firebase design, API patterns, and rules-based authorization model. Its SDK interfaces are designed to mirror the Firebase SDK interfaces so developers can move across backends with minimal changes. This Oracle Backend for Firebase Android SDK is a distinct Oracle offering.
+
 ## Requirements
 
 - Android Gradle Plugin: 8.7.0+
