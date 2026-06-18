@@ -380,6 +380,10 @@ Reports are generated under `fusabase/build/reports/jacoco`.
   - Validate JSON, ensure the file is readable.
 - Social login redirect not working:
   - Add `SocialLoginActivity` and set `fusabase_scheme` via resources/config.
+ 
+## Trademarks
+
+Firebase is a trademark of Google LLC.  Use of the Firebase name here is solely to describe the design patterns and SDK interfaces that Oracle Backend for Firebase follows for developer familiarity and ease of migration; it does not imply any affiliation with or endorsement by Google.
 
 ## Contributing
 
