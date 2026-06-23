@@ -114,14 +114,19 @@ class ONPREMAuthHelper extends AuthHelper {
                         "Unsupported credentials provided for linking.");
             }
 
-            if (this.auth.getCurrentUser() == null) {
+            FusabaseUser currentUser = this.auth.getCurrentUser();
+            if (currentUser == null) {
 
                 FusabaseLogger.d(TAG, "User must be recently logged in for linking provider.");
                 throw new FusabaseAuthException(FusabaseAuthException.Code.UNAUTHENTICATED.toString(),
                     "User must be recently logged in for linking with provider.");
             }
 
-            String authHeader = this.auth.getCurrentUser().userHelper.getAuthorizationHeader();
+            if (authCredential instanceof EmailAuthCredential) {
+                validateEmailCredentialForLinking((EmailAuthCredential) authCredential, currentUser.getEmail());
+            }
+
+            String authHeader = currentUser.userHelper.getAuthorizationHeader();
             if (!authHeader.isEmpty()) {
                 headers.put("Authorization", authHeader);
             }
@@ -129,7 +134,8 @@ class ONPREMAuthHelper extends AuthHelper {
         
         String password = "";
         if (link && authCredential instanceof EmailAuthCredential) {
-            password = ((EmailAuthCredential) authCredential).getPassword();
+            EmailAuthCredential emailAuthCredential = (EmailAuthCredential) authCredential;
+            password = emailAuthCredential.getPassword();
             if (password == null || password.isEmpty()) {
                 throw new FusabaseAuthException(
                     FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
@@ -188,6 +194,30 @@ class ONPREMAuthHelper extends AuthHelper {
         } catch (FusabaseException e) {
             FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
             throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
+        }
+    }
+
+    static void validateEmailCredentialForLinking(@NonNull EmailAuthCredential credential,
+                                                  @Nullable String currentUserEmail)
+            throws FusabaseAuthException {
+        String credentialEmail = credential.getEmail();
+        if (credentialEmail == null || credentialEmail.trim().isEmpty()) {
+            throw new FusabaseAuthException(
+                FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                "Email must be provided in EmailAuthCredential for linking.");
+        }
+
+        if (currentUserEmail == null || currentUserEmail.trim().isEmpty()) {
+            throw new FusabaseAuthException(
+                FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                "A user must be logged in for credential linking");
+        }
+
+        if (!credentialEmail.trim().equalsIgnoreCase(currentUserEmail.trim())) {
+            FusabaseLogger.d(TAG, "EmailAuthCredential email does not match the current user email.");
+            throw new FusabaseAuthInvalidCredentialsException(
+                FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                "EmailAuthCredential email must match the current user email for linking.");
         }
     }
 
