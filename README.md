@@ -8,6 +8,8 @@ An Android SDK for Oracle Backend for Firebase (Fusabase) that provides authenti
 - Storage APIs (upload/download, metadata, listing)
 - Automatic initialization from `fusabase-config.json` via a Gradle plugin
 
+This Oracle Backend for Firebase Android SDK follows the Firebase design, API patterns, and rules-based authorization model. Its SDK interfaces are designed to mirror the Firebase SDK interfaces so developers can move across backends with minimal changes. This Oracle Backend for Firebase Android SDK is a distinct Oracle offering.
+
 ## Requirements
 
 - Android Gradle Plugin: 8.7.0+
@@ -78,7 +80,6 @@ Example `fusabase-config.json`:
 ```
 
 `auth_type` accepts `base`, `idcs`, or `ldap`.
-When `auth_type` is `idcs`, `idcs_domain_url` is required.
 
 ## Apply the Fusabase config Gradle plugin
 
@@ -376,6 +377,10 @@ Reports are generated under `fusabase/build/reports/jacoco`.
   - Validate JSON, ensure the file is readable.
 - Social login redirect not working:
   - Add `SocialLoginActivity` and set `fusabase_scheme` via resources/config.
+ 
+## Trademarks
+
+Firebase is a trademark of Google LLC.  Use of the Firebase name here is solely to describe the design patterns and SDK interfaces that Oracle Backend for Firebase follows for developer familiarity and ease of migration; it does not imply any affiliation with or endorsement by Google.
 
 ## Contributing
 

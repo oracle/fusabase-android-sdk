@@ -91,7 +91,7 @@ FusabaseApp app = FusabaseApp.initializeApp(context, options);
 FusabaseAuth auth = FusabaseAuth.getInstance(app);
 ```
 
-Use `setAuthType("base")` or `setAuthType("ldap")` to point at an on-prem identity-manager backend instead. See `agent_docs/configuration.md` for the full options surface.
+Use `setAuthType("onprem")` to point at an on-prem identity-manager backend instead. See `agent_docs/configuration.md` for the full options surface.
 
 ## Notes
 
