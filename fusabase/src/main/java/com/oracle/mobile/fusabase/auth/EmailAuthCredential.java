@@ -31,13 +31,18 @@ import android.os.Parcel;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.util.Objects;
+import com.oracle.mobile.fusabase.logger.FusabaseLogger;
+import com.oracle.mobile.fusabase.utils.SecureString;
+
+import java.security.GeneralSecurityException;
 
 /**
  * Class EmailAuthCredential
  * Represents an Email and Password credential for auth workflow
  */
 public class EmailAuthCredential extends AuthCredential{
+
+    private static final String TAG = "FusabaseAuth";
 
     @NonNull
     private final String provider;
@@ -46,7 +51,7 @@ public class EmailAuthCredential extends AuthCredential{
     @NonNull
     private final String email;
     @Nullable
-    private final String password;
+    private final SecureString password;
 
      /**
      * Constructs a new EmailAuthCredential object.
@@ -63,7 +68,20 @@ public class EmailAuthCredential extends AuthCredential{
             this.provider = provider;
             this.signInMethod = signInMethod;
             this.email = email;
-            this.password = password;
+            this.password = createSecurePassword(password);
+    }
+
+    @Nullable
+    private SecureString createSecurePassword(@Nullable String password) {
+        if (password == null) {
+            return null;
+        }
+        try {
+            return new SecureString(password);
+        } catch (GeneralSecurityException e) {
+            FusabaseLogger.e(TAG, "Cannot process email auth credential.");
+            return null;
+        }
     }
 
     /**
@@ -101,7 +119,7 @@ public class EmailAuthCredential extends AuthCredential{
      */
     @Nullable
     protected String getPassword() {
-        return this.password;
+        return this.password == null ? null : this.password.getDecryptedString();
     }
 
     @NonNull

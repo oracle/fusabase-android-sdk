@@ -236,7 +236,7 @@ class ONPREMAuthHelper extends AuthHelper {
         }
 
         if (this.auth.getCurrentUser() == null ||
-                (provider.equals("epw") && this.auth.getCurrentUser().password == null)) {
+                (provider.equals("epw") && !this.auth.getCurrentUser().hasPassword())) {
 
             FusabaseLogger.d(TAG, "User must be recently logged in for linking provider.");
             throw new FusabaseAuthException(FusabaseAuthException.Code.UNAUTHENTICATED.toString(),
