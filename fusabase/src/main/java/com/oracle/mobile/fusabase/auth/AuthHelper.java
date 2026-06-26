@@ -584,7 +584,7 @@ abstract class AuthHelper {
                 public FusabaseUser getUser() {
                     return new FusabaseUserImpl(userData,
                             authHelper.getFusabaseAuth(),
-                            "");
+                            null);
                 }
             };
 

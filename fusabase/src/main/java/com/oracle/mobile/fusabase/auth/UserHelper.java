@@ -146,18 +146,18 @@ abstract class UserHelper {
     @NonNull
     protected JsonObject updatePasswordHelper(@NonNull FusabaseUser user,
                                               @NonNull String newPassword,
-                                              @NonNull String oldPassword)
+                                              @Nullable String currentPassword)
             throws FusabaseException {
-        if (oldPassword.isEmpty()) {
-            FusabaseLogger.e(TAG, "Current user not recently logged in.");
+        if (currentPassword == null || currentPassword.isEmpty()) {
+            FusabaseLogger.e(TAG, "Current password is required to update password.");
             throw new FusabaseAuthRecentLoginRequiredException(
                     FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
-                    "User hasn't recently logged in");
+                    "User must reauthenticate before updating password");
         }
 
         JsonObject payload = Json.createObjectBuilder()
                 .add("password", newPassword)
-                .add("oldPassword", oldPassword)
+                .add("oldPassword", currentPassword)
                 .build();
         IdToken accessToken = this.getIdTokenHelper(false);
 

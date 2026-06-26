@@ -56,7 +56,7 @@ class FusabaseUserImpl extends FusabaseUser {
 
     protected FusabaseUserImpl(@NonNull JsonObject Data,
                             @NonNull FusabaseAuth auth,
-                            @NonNull String password) {
+                            @Nullable String password) {
 
         super(Data, auth, password);
 
