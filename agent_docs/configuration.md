@@ -59,8 +59,6 @@ Important option accessors include:
 ## Notes
 
 - The SDK uses Java-style getter methods on `FusabaseOptions`.
-- For test environments that use self-signed certificates, configure Android app trust with Network Security Config instead of SDK options.
-- For IDCS auto-init, `fusabase-config.json` must provide top-level `idcs_domain_url`.
 - The auto-init path is Android-specific and important for app code generation.
 - Named app instances are supported through `FusabaseApp.initializeApp(context, options, name)`.
 
