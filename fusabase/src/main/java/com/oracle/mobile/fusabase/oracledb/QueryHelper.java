@@ -106,6 +106,11 @@ class QueryHelper {
     protected static final String ONPREM = "/onprem";
 
     /**
+     * IDCS service path.
+     */
+    protected static final String IDCS = "/idcs";
+
+    /**
      * Authorize snapshot path.
      */
     protected static final String AUTHORIZE_SNAPSHOT = "/authorizeSnapshot";

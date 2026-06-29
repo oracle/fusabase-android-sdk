@@ -35,6 +35,7 @@ import com.oracle.mobile.fusabase.task.Task;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,10 +61,13 @@ class PollingController<K extends Reference, T extends Snapshot> {
     private final static int POLLING_INTERVAL = 10;
 
     /** Scheduled executor service for managing polling tasks */
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private ScheduledExecutorService scheduler;
 
     /** Atomic flag indicating whether polling is currently active */
-    private AtomicBoolean isPolling = new AtomicBoolean(false);
+    private final AtomicBoolean isPolling = new AtomicBoolean(false);
+
+    /** Handle for the active scheduled polling task, if any */
+    private ScheduledFuture<?> pollingFuture;
 
     /** Queue for storing messages during polling operations */
     private LinkedList<T> messageQueue;
@@ -86,7 +90,7 @@ class PollingController<K extends Reference, T extends Snapshot> {
      * Called when the listener count changes. Automatically starts or stops polling
      * based on whether there are active listeners.
      */
-    protected void listenersUpdated() {
+    protected synchronized void listenersUpdated() {
         FusabaseLogger.d("PollingController", "ListenersUpdated");
         if (this.listenerManager.getListenerCount() > 0) {
             startPolling();
@@ -99,10 +103,27 @@ class PollingController<K extends Reference, T extends Snapshot> {
      * Starts the polling process by scheduling periodic database checks.
      * The polling runs at fixed intervals defined by POLLING_INTERVAL.
      */
-    protected void startPolling() {
+    protected synchronized void startPolling() {
+        if (!this.isPolling.compareAndSet(false, true)) {
+            FusabaseLogger.d("PollingController", "Polling already active");
+            return;
+        }
+
         FusabaseLogger.d("PollingController", "PollingStarted");
-        this.isPolling = new AtomicBoolean(true);
-        scheduler.scheduleWithFixedDelay(this::poll, 0, POLLING_INTERVAL, TimeUnit.SECONDS);
+        try {
+            if (this.scheduler == null || this.scheduler.isShutdown() || this.scheduler.isTerminated()) {
+                this.scheduler = Executors.newScheduledThreadPool(1);
+            }
+            this.pollingFuture = scheduler.scheduleWithFixedDelay(this::poll, 0, POLLING_INTERVAL, TimeUnit.SECONDS);
+        } catch (RuntimeException e) {
+            this.isPolling.set(false);
+            this.pollingFuture = null;
+            if (this.scheduler != null) {
+                this.scheduler.shutdownNow();
+                this.scheduler = null;
+            }
+            throw e;
+        }
     }
 
     /**
@@ -136,11 +157,23 @@ class PollingController<K extends Reference, T extends Snapshot> {
      * if changes are detected. Handles both successful responses and error conditions.
      */
     protected void poll() {
+        if (!this.isPolling.get()) {
+            return;
+        }
+
         this.listenerManager.getListeners().forEach((listenerData) -> {
+            if (!this.isPolling.get()) {
+                return;
+            }
+
             FusabaseLogger.d("PollingController", "SendingPollingRequest");
             listenerData.getReference().get(Source.SERVER, true).addOnCompleteListener(new OnCompleteListener<Snapshot>() {
                 @Override
                 public void onComplete(Task<Snapshot> task) {
+                    if (!isPolling.get() || !listenerManager.getListeners().contains(listenerData)) {
+                        return;
+                    }
+
                     if (task.isSuccessful()) {
                         FusabaseLogger.i("PollingController", "PollingRequestSuccessful for "
                                 + listenerData.getReference().getPath());
@@ -162,13 +195,24 @@ class PollingController<K extends Reference, T extends Snapshot> {
     }
 
     /**
-     * Stops the polling process and shuts down the scheduler.
+     * Stops the polling process by cancelling the active polling task.
      * This method should be called when there are no more active listeners.
      */
-    protected void stopPolling() {
+    protected synchronized void stopPolling() {
+        if (!this.isPolling.compareAndSet(true, false)) {
+            FusabaseLogger.d("PollingController", "Polling already stopped");
+            return;
+        }
+
         FusabaseLogger.i("PollingController", "PollingShuttingDown");
-        this.isPolling = new AtomicBoolean(false);
-        scheduler.shutdownNow();
+        if (this.pollingFuture != null) {
+            this.pollingFuture.cancel(false);
+            this.pollingFuture = null;
+        }
+        if (this.scheduler != null) {
+            this.scheduler.shutdownNow();
+            this.scheduler = null;
+        }
     }
 
 }

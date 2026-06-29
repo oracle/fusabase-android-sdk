@@ -77,12 +77,6 @@ public class FusabaseApp {
     public static final String DEFAULT_APP_NAME = "[DEFAULT]";
 
     /**
-     * Global flag indicating whether self-signed certificates are allowed.
-     * This is set during app initialization and used by HttpRequestHelper.
-     */
-    private static volatile boolean globalAllowsSelfSignedCertificates = false;
-
-    /**
      * The configuration options for this FusabaseApp instance.
      */
     public final FusabaseOptions fusabaseOptions;
@@ -186,15 +180,8 @@ public class FusabaseApp {
         }
 
         if (!APP_INSTANCES.containsKey(name)) {
-            // Set global SSL configuration for self-signed certificates
-            globalAllowsSelfSignedCertificates = options.allowsSelfSignedCertificates();
-
             APP_INSTANCES.put(name, new FusabaseApp(context, options, name));
             FusabaseLogger.i(TAG, "Initialized FusabaseApp instance with name " + name);
-            if (options.allowsSelfSignedCertificates()) {
-                FusabaseLogger.w(TAG, "WARNING: Self-signed certificates are allowed for testing. " +
-                        "This reduces security and should never be used in production.");
-            }
             return Objects.requireNonNull(APP_INSTANCES.get(name));
         }
         FusabaseLogger.e("An app with the same name is already initialized.");
@@ -277,19 +264,6 @@ public class FusabaseApp {
     @NonNull
     public String getName() {
         return this.name;
-    }
-
-    /**
-     * Gets whether self-signed certificates are globally allowed for testing purposes.
-     * <p>
-     * <strong>WARNING:</strong> This should only return true for testing and development.
-     * Allowing self-signed certificates reduces security and should never be used in production.
-     * </p>
-     *
-     * @return true if self-signed certificates are allowed, false for secure production use
-     */
-    public static boolean allowsSelfSignedCertificates() {
-        return globalAllowsSelfSignedCertificates;
     }
 
     /**

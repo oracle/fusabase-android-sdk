@@ -42,13 +42,12 @@ public class Options {
     private final String authType;
     private final String objectsType;
     private final String storageBucket;
-    private final IDCSOptions idcsOptions;
+    private final String idcsDomainURL;
     private final String schema;
     private final String name;
     private final String apiVersion;
     private final boolean useSocket;
     private final boolean enableLogging;
-    private final boolean allowsSelfSignedCertificates;
     private final int uploadChunkSize;
     private final long longPollingInterval;
 
@@ -60,22 +59,21 @@ public class Options {
         this.authType = builder.authType;
         this.objectsType = builder.objectsType;
         this.storageBucket = builder.storageBucket;
-        this.idcsOptions = builder.idcsOptions;
+        this.idcsDomainURL = builder.idcsDomainURL;
         this.schema = builder.schema;
         this.name = builder.appName;
         this.apiVersion = builder.apiVersion;
         this.useSocket = builder.useSocket;
         this.enableLogging = builder.enableLogging;
-        this.allowsSelfSignedCertificates = builder.allowsSelfSignedCertificates;
         this.uploadChunkSize = builder.uploadChunkSize;
         this.longPollingInterval = builder.longPollingInterval;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(appId, authType, name, authId, idcsOptions,
+        return Objects.hash(appId, authType, name, authId, idcsDomainURL,
                 projectId, objectsType, ordsHost, schema,
-                storageBucket, apiVersion, useSocket, enableLogging, allowsSelfSignedCertificates, uploadChunkSize, longPollingInterval);
+                storageBucket, apiVersion, useSocket, enableLogging, uploadChunkSize, longPollingInterval);
     }
 
     @Override
@@ -94,13 +92,12 @@ public class Options {
                 Objects.equals(authType, that.authType) &&
                 Objects.equals(objectsType, that.objectsType) &&
                 Objects.equals(storageBucket, that.storageBucket) &&
-                Objects.equals(idcsOptions, that.idcsOptions) &&
+                Objects.equals(idcsDomainURL, that.idcsDomainURL) &&
                 Objects.equals(schema, that.schema) &&
                 Objects.equals(name, that.name) &&
                 Objects.equals(apiVersion, that.apiVersion) &&
                 useSocket == that.useSocket &&
                 enableLogging == that.enableLogging &&
-                allowsSelfSignedCertificates == that.allowsSelfSignedCertificates &&
                 uploadChunkSize == that.uploadChunkSize &&
                 longPollingInterval == that.longPollingInterval;
     }
@@ -122,7 +119,7 @@ public class Options {
      */
     @NonNull
     public String getDomainURL() {
-        return this.idcsOptions != null ? this.idcsOptions.getDomainURL() : "";
+        return this.idcsDomainURL != null ? this.idcsDomainURL : "";
     }
 
     /**
@@ -192,24 +189,6 @@ public class Options {
     }
 
     /**
-     * Gets the client ID.
-     *
-     * @return The client ID.
-     */
-    public String getClientId() {
-        return this.idcsOptions != null ? this.idcsOptions.getClientId() : "";
-    }
-
-    /**
-     * Gets the client secret.
-     *
-     * @return The client secret.
-     */
-    public String getClientSecret() {
-        return this.idcsOptions != null ? this.idcsOptions.getClientSecret() : "";
-    }
-
-    /**
      * Gets the schema.
      *
      * @return The schema.
@@ -246,15 +225,6 @@ public class Options {
     }
 
     /**
-     * Gets the allowsSelfSignedCertificates config. Returns true if self-signed certificates
-     * are allowed for testing purposes, else false for secure production use.
-     * @return The allowsSelfSignedCertificates
-     */
-    public boolean allowsSelfSignedCertificates() {
-        return this.allowsSelfSignedCertificates;
-    }
-
-    /**
      * Gets the upload chunk size for file uploads.
      *
      * @return The upload chunk size in bytes.
@@ -284,13 +254,12 @@ public class Options {
         private String authType;
         private String objectsType;
         private String storageBucket;
-        private IDCSOptions idcsOptions;
+        private String idcsDomainURL;
         private String schema;
         private String appName;
         private String apiVersion;
         private boolean useSocket;
         private boolean enableLogging;
-        private boolean allowsSelfSignedCertificates;
         private int uploadChunkSize;
         private long longPollingInterval;
 
@@ -402,6 +371,17 @@ public class Options {
         }
 
         /**
+         * Sets the IDCS domain URL.
+         *
+         * @param idcsDomainURL The IDCS domain URL.
+         * @return This builder instance.
+         */
+        public Builder setIdcsDomainURL(@NonNull String idcsDomainURL) {
+            this.idcsDomainURL = idcsDomainURL;
+            return this;
+        }
+
+        /**
          * Sets the apiVersion.
          *
          * @param apiVersion The apiVersion.
@@ -433,17 +413,6 @@ public class Options {
         }
 
         /**
-         * Sets the IDCS options.
-         *
-         * @param idcsOptions The IDCS options.
-         * @return This builder instance.
-         */
-        public Builder setIDCSOptions(@NonNull IDCSOptions idcsOptions) {
-            this.idcsOptions = idcsOptions;
-            return this;
-        }
-
-        /**
          * Sets the upload chunk size for file uploads.
          *
          * @param uploadChunkSize The upload chunk size in bytes.
@@ -462,17 +431,6 @@ public class Options {
          */
         public Builder setLongPollingInterval(long longPollingInterval) {
             this.longPollingInterval = longPollingInterval;
-            return this;
-        }
-
-        /**
-         * Sets whether self-signed certificates are allowed for testing purposes.
-         *
-         * @param allowsSelfSignedCertificates true to allow self-signed certificates, false for secure production use
-         * @return This builder instance.
-         */
-        public Builder setAllowsSelfSignedCertificates(boolean allowsSelfSignedCertificates) {
-            this.allowsSelfSignedCertificates = allowsSelfSignedCertificates;
             return this;
         }
 

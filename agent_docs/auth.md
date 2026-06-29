@@ -72,18 +72,11 @@ auth.sendPasswordResetEmail(email);
 
 ### IDCS sign-in setup
 
-IDCS-backed apps are configured at app init via `FusabaseOptions`. Set `authType` to `"idcs"` and supply an `IDCSOptions` instance.
+IDCS-backed apps are configured at app init via `FusabaseOptions`. Set `authType` to `"idcs"` and set the IDCS identity-domain URL.
 
 ```java
 import com.oracle.mobile.fusabase.FusabaseApp;
 import com.oracle.mobile.fusabase.FusabaseOptions;
-import com.oracle.mobile.fusabase.models.IDCSOptions;
-
-IDCSOptions idcs = new IDCSOptions.Builder()
-    .setClientId("client-id")
-    .setClientSecret("client-secret")
-    .setDomainURL("https://example.identity.oracle.com")
-    .build();
 
 FusabaseOptions options = new FusabaseOptions.Builder()
     .setOrdsHost("https://example/ords/schema/")
@@ -91,7 +84,7 @@ FusabaseOptions options = new FusabaseOptions.Builder()
     .setAppId("app-id")
     .setAuthType("idcs")
     .setAuthId("auth-id")
-    .setIDCSOptions(idcs)
+    .setIdcsDomainURL("https://example.identity.oracle.com")
     .build();
 
 FusabaseApp app = FusabaseApp.initializeApp(context, options);

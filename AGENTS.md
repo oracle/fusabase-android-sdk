@@ -49,7 +49,6 @@ High-level configuration fields include:
 - `enable_logging`
 - `upload_chunk_size`
 - `long_polling_interval`
-- `allows_self_signed_certificates`
 
 Typical setup:
 
