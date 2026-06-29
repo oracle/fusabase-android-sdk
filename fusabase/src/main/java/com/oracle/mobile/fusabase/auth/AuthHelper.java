@@ -36,19 +36,26 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.oracle.mobile.fusabase.FusabaseException;
+import com.oracle.mobile.fusabase.FusabaseNetworkException;
+import com.oracle.mobile.fusabase.http.HttpRequestHelper;
+import com.oracle.mobile.fusabase.http.HttpResponse;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 import com.oracle.mobile.fusabase.utils.Utils;
 import com.oracle.mobile.fusabase.task.TaskCompletionSource;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.URLDecoder;
 import java.security.GeneralSecurityException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 
 abstract class AuthHelper {
@@ -56,39 +63,151 @@ abstract class AuthHelper {
     protected final static String TAG = "FusabaseAuth";
 
     @NonNull
-    abstract protected JsonObject registerUser (@NonNull String email,
-                                                @NonNull String password)
-            throws FusabaseException;
+    protected JsonObject registerUser(@NonNull String email,
+                                      @NonNull String password)
+            throws FusabaseException
+    {
+        JsonObject payload = Json.createObjectBuilder()
+                .add("first_name", "-")
+                .add("last_name", "-")
+                .add("email", email)
+                .add("password", password)
+                .build();
+
+        JsonObject result = executeAuthJsonRequest(
+                "Registering user through ORDS",
+                Config.SELF_REGISTER_EP,
+                "POST",
+                jsonHeaders(),
+                apiKeyQueryParameters(),
+                payload.toString());
+
+        return normalizeRegistrationResponse(email, password, result);
+    }
 
     @NonNull
-    abstract protected JsonObject authenticateUser(@NonNull String email,
-                                                            @NonNull String password)
-            throws FusabaseException;
+    protected JsonObject authenticateUser(@NonNull String email,
+                                          @NonNull String password)
+            throws FusabaseException
+    {
+        JsonObject payload = Json.createObjectBuilder()
+                .add("grant_type", "user_credentials")
+                .add("username", email)
+                .add("password", password)
+                .build();
+
+        JsonObject result = executeAuthJsonRequest(
+                "Authenticating user through ORDS",
+                Config.AUTHENTICATE_REST_EP,
+                "POST",
+                jsonHeaders(),
+                apiKeyQueryParameters(),
+                payload.toString());
+
+        return normalizeAuthTokenResponse(result);
+    }
 
     @NonNull
-    abstract protected JsonObject sendPasswordResetEmailHelper(@NonNull String email)
-            throws FusabaseException;
+    protected JsonObject sendPasswordResetEmailHelper(@NonNull String email)
+            throws FusabaseException
+    {
+        Map<String, String> queryParameters = apiKeyQueryParameters();
+        queryParameters.put("email", email);
+        queryParameters.put("requesttype", "resetpwd");
+
+        executeAuthJsonRequest(
+                "Sending password reset email through ORDS",
+                Config.SEND_PASSWORD_RESET_EMAIL,
+                "GET",
+                jsonHeaders(),
+                queryParameters,
+                null);
+        return Json.createObjectBuilder().add("success", 1).build();
+    }
 
     @NonNull
-    abstract protected JsonObject performSignOut(@NonNull String refreshToken)
-            throws FusabaseException;
+    protected JsonObject performSignOut(@NonNull String refreshToken)
+            throws FusabaseException
+    {
+        JsonObject result = this.revokeRefreshToken(refreshToken);
+        if (result.containsKey("success")) {
+            FusabaseLogger.d(TAG, "User signedOut successfully.");
+        } else {
+            FusabaseLogger.e(TAG, "User cannot be signed Out.");
+        }
+        return result;
+    }
 
     @NonNull
-    abstract protected JsonObject verifyPasswordResetCodeHelper(@NonNull String code)
-            throws FusabaseException;
+    protected JsonObject verifyPasswordResetCodeHelper(@NonNull String code)
+            throws FusabaseException
+    {
+        Map<String, String> queryParameters = apiKeyQueryParameters();
+        queryParameters.put("code", code);
+        queryParameters.put("requesttype", "resetpwd");
+
+        return executeAuthJsonRequest(
+                "Verifying password reset code through ORDS",
+                Config.VERIFY_PASSWORD_RESET_CODE,
+                "GET",
+                jsonHeaders(),
+                queryParameters,
+                null);
+    }
 
     @NonNull
-    abstract protected JsonObject confirmPasswordResetHelper (@NonNull String code,
-                                                              @NonNull String newPassword)
-            throws FusabaseException;
+    protected JsonObject confirmPasswordResetHelper(@NonNull String code,
+                                                    @NonNull String newPassword)
+            throws FusabaseException
+    {
+        String storedEmail = this.readDataFromPreferences(
+                this.getFusabaseAuth().getApp().getApplicationContext(), "password_reset_email");
+        if (storedEmail == null || storedEmail.isEmpty()) {
+            throw new FusabaseException("No password reset request found. Please request a password reset first.");
+        }
+
+        JsonObject payload = Json.createObjectBuilder()
+                .add("password", newPassword)
+                .add("code", code)
+                .build();
+
+        Map<String, String> queryParameters = apiKeyQueryParameters();
+        queryParameters.put("email", storedEmail);
+
+        return executeAuthJsonRequest(
+                "Confirming password reset through ORDS",
+                Config.CONFIRM_PASSWORD_RESET,
+                "POST",
+                jsonHeaders(),
+                queryParameters,
+                payload.toString());
+    }
 
     @NonNull
-    abstract protected JsonObject reloadUser (@NonNull FusabaseUser fusabaseUser)
-            throws FusabaseException;
+    protected JsonObject reloadUser(@NonNull FusabaseUser fusabaseUser)
+            throws FusabaseException
+    {
+        GetTokenResult accessToken = new GetTokenResult(fusabaseUser.userHelper.getIdTokenHelper(true));
+        return this.getUserDetails(accessToken);
+    }
 
     @NonNull
-    abstract protected JsonObject performCodeExchange (@NonNull String authCode, @NonNull String codeVerifier)
-        throws FusabaseException;
+    protected JsonObject performCodeExchange(@NonNull String authCode, @NonNull String codeVerifier)
+        throws FusabaseException
+    {
+        JsonObject payload = Json.createObjectBuilder()
+                .add("code", authCode)
+                .add("code_verifier", codeVerifier)
+                .build();
+
+        return executeAuthJsonRequest(
+                "Exchanging redirect code through ORDS",
+                Config.GET_REDIRECT_RESULT,
+                "POST",
+                new HashMap<>(),
+                apiKeyQueryParameters(),
+                payload.toString());
+    }
 
     @NonNull
     abstract protected JsonObject signInWithCredentialHelper (@NonNull AuthCredential authCredential, boolean link)
@@ -102,10 +221,6 @@ abstract class AuthHelper {
     abstract protected JsonObject getUserDetails(@NonNull GetTokenResult accessToken)
             throws FusabaseException;
 
-    @Nullable
-    abstract protected JsonObject getFusabaseToken(@NonNull JsonObject authCredential, @NonNull JsonObject profileCredential)
-            throws FusabaseException;
-
     @NonNull
     abstract protected FusabaseAuth getFusabaseAuth();
 
@@ -117,6 +232,186 @@ abstract class AuthHelper {
                                                    @NonNull String password,
                                                    @NonNull JsonObject data)
             throws FusabaseException;
+
+    @NonNull
+    protected JsonObject normalizeAuthTokenResponse(@NonNull JsonObject result) {
+        return Json.createObjectBuilder()
+                .add("access_token", result.getString("access_token"))
+                .add("refresh_token", result.getString("refresh_token"))
+                .build();
+    }
+
+    @NonNull
+    protected JsonObject normalizeRegistrationResponse(@NonNull String email,
+                                                       @NonNull String password,
+                                                       @NonNull JsonObject result)
+            throws FusabaseException {
+        return normalizeAuthTokenResponse(result);
+    }
+
+    @NonNull
+    protected JsonObject revokeRefreshToken(@NonNull String refreshToken)
+            throws FusabaseException {
+        JsonObject payload = Json.createObjectBuilder()
+                .add("token", refreshToken)
+                .build();
+
+        executeAuthJsonRequest(
+                "Revoking refresh token through ORDS",
+                Config.REVOKE_REFRESH_TOKEN,
+                "PUT",
+                new HashMap<>(),
+                apiKeyQueryParameters(),
+                payload.toString());
+        return Json.createObjectBuilder().add("success", 1).build();
+    }
+
+    @NonNull
+    protected JsonObject executeAuthJsonRequest(@NonNull String logAction,
+                                                @NonNull String endpoint,
+                                                @NonNull String method,
+                                                @NonNull Map<String, String> headers,
+                                                @Nullable Map<String, String> queryParameters,
+                                                @Nullable String payload)
+            throws FusabaseException {
+        String url = this.getConfig().getAuthBaseEndpoint(endpoint);
+        return executeAuthJsonRequestToUrl(logAction, url, endpoint, method, headers, queryParameters, payload);
+    }
+
+    @NonNull
+    protected JsonObject executeAuthJsonRequestToUrl(@NonNull String logAction,
+                                                     @NonNull String url,
+                                                     @Nullable String endpoint,
+                                                     @NonNull String method,
+                                                     @NonNull Map<String, String> headers,
+                                                     @Nullable Map<String, String> queryParameters,
+                                                     @Nullable String payload)
+            throws FusabaseException {
+        FusabaseLogger.d(TAG, logAction);
+
+        HttpRequestHelper requestHelper = new HttpRequestHelper();
+        if (queryParameters == null) {
+            if (payload == null) {
+                requestHelper.createHttpRequest(url, method, headers);
+            } else {
+                requestHelper.createHttpRequest(url, method, headers, payload);
+            }
+        } else if (payload == null) {
+            requestHelper.createHttpRequest(url, method, headers, queryParameters);
+        } else {
+            requestHelper.createHttpRequest(url, method, headers, queryParameters, payload);
+        }
+
+        HttpResponse response;
+        try {
+            response = requestHelper.executeRequest();
+        } catch (FusabaseException e) {
+            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
+            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
+        }
+
+        if (response.getStatus()) {
+            if (response.getResponse() == null || response.getResponse().isEmpty()) {
+                return Json.createObjectBuilder().add("success", 1).build();
+            }
+            try (JsonReader reader = Json.createReader(new StringReader(response.getResponse()))) {
+                return reader.readObject();
+            }
+        }
+
+        FusabaseLogger.e(TAG, logAction + " failed with response code "
+                + response.getCode() + " with the following error " + response.getError());
+        throw buildAuthRequestException(endpoint, response);
+    }
+
+    @NonNull
+    protected JsonObject executeAuthStatusRequestToUrl(@NonNull String logAction,
+                                                       @NonNull String url,
+                                                       @Nullable String endpoint,
+                                                       @NonNull String method,
+                                                       @NonNull Map<String, String> headers,
+                                                       @Nullable Map<String, String> queryParameters,
+                                                       @Nullable String payload)
+            throws FusabaseException {
+        FusabaseLogger.d(TAG, logAction);
+
+        HttpRequestHelper requestHelper = new HttpRequestHelper();
+        if (queryParameters == null) {
+            if (payload == null) {
+                requestHelper.createHttpRequest(url, method, headers);
+            } else {
+                requestHelper.createHttpRequest(url, method, headers, payload);
+            }
+        } else if (payload == null) {
+            requestHelper.createHttpRequest(url, method, headers, queryParameters);
+        } else {
+            requestHelper.createHttpRequest(url, method, headers, queryParameters, payload);
+        }
+
+        HttpResponse response;
+        try {
+            response = requestHelper.executeRequest();
+        } catch (FusabaseException e) {
+            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
+            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
+        }
+
+        if (response.getStatus()) {
+            return Json.createObjectBuilder().add("success", 1).build();
+        }
+
+        FusabaseLogger.e(TAG, logAction + " failed with response code "
+                + response.getCode() + " with the following error " + response.getError());
+        throw buildAuthRequestException(endpoint, response);
+    }
+
+    @NonNull
+    protected FusabaseException buildAuthRequestException(@Nullable String endpoint,
+                                                         @NonNull HttpResponse response) {
+        if (response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403) {
+            return new FusabaseAuthInvalidCredentialsException(
+                    FusabaseAuthException.Code.fromCode(response.getCode()).toString(),
+                    "Authentication failed. Please check your credentials and try again.");
+        }
+        if (Config.SELF_REGISTER_EP.equals(endpoint) && response.getCode() == 400) {
+            return new FusabaseAuthWeakPasswordException(
+                    FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                    "The password provided does not meet security requirements. Please choose a stronger password.");
+        }
+        if (Config.SEND_PASSWORD_RESET_EMAIL.equals(endpoint)) {
+            return new FusabaseAuthEmailException(
+                    FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                    "Unable to send password reset email. Please check the email address and try again.");
+        }
+        if (Config.VERIFY_PASSWORD_RESET_CODE.equals(endpoint)) {
+            return new FusabaseException("Unable to verify password reset code. Please check the code and try again.");
+        }
+        if (Config.CONFIRM_PASSWORD_RESET.equals(endpoint)) {
+            return new FusabaseException("Unable to reset password. Please check your reset code and try again.");
+        }
+        if (Config.REVOKE_REFRESH_TOKEN.equals(endpoint)) {
+            return new FusabaseException("Sign out failed. Please try again later.");
+        }
+
+        String error = response.getError();
+        return new FusabaseException(error == null || error.isEmpty()
+                ? "Authentication request failed. Please try again later."
+                : error);
+    }
+
+    @NonNull
+    protected Map<String, String> apiKeyQueryParameters() {
+        Map<String, String> queryParameters = new HashMap<>();
+        queryParameters.put("apiKey", this.getConfig().getAppId());
+        return queryParameters;
+    }
+
+    @NonNull
+    protected Map<String, String> jsonHeaders() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        return headers;
+    }
 
 
      protected JsonObject readUserDetails(@NonNull Context context,
@@ -240,11 +535,7 @@ abstract class AuthHelper {
 
                 tokensForUser = responseObject;
 
-                if (isIdcs) {
-                    // Exchange IDCS tokens for FUSABASE tokens (same as createUserWithEmailAndPassword)
-                    tokensForUser = authHelper.getFusabaseToken(responseObject, responseObject);
-                    // Link not supported for IDCS
-                } else if (link) {
+                if (!isIdcs && link) {
                     AuthCredential authCredential = getAuthCredential(providerId, responseObject);
                     tokensForUser = authHelper.signInWithCredentialHelper(authCredential, link);
                 }
@@ -252,7 +543,7 @@ abstract class AuthHelper {
                 userDetails = authHelper.getUserDetails(
                         new GetTokenResult(
                                 new IdToken(
-                                        isIdcs ? responseObject.getString("access_token") : tokensForUser.getString("access_token"),
+                                        tokensForUser.getString("access_token"),
                                         "password")));
             } catch (FusabaseException e) {
                 FusabaseLogger.e("Cannot perform code exchange or error parsing the token."+ e.getMessage());
@@ -265,13 +556,8 @@ abstract class AuthHelper {
 
             if (isIdcs) {
                 userDataBuilder
-                    .add("authnToken", tokensForUser.getString("authn_token"))
                     .add("accessToken", tokensForUser.getString("access_token"))
-                    .add("refreshToken", tokensForUser.getString("refresh_token"))
-                    .add("authnRefreshToken", tokensForUser.getString("authn_refresh_token"))
-                    .add("idcsAccessToken", responseObject.getString("access_token"))
-                    .add("idcsRefreshToken", responseObject.getString("refresh_token"))
-                    .add("idcsAuthnToken", responseObject.getString("id_token"));
+                    .add("refreshToken", tokensForUser.getString("refresh_token", ""));
             } else {
                 userDataBuilder
                     .add("authnToken", JsonValue.NULL)
@@ -288,7 +574,7 @@ abstract class AuthHelper {
                 @Override
                 public AuthCredential getCredential() {
                     return new OAuthCredentialImpl(finalProviderId,
-                            userData.getString("access_token"),
+                            userData.getString("accessToken"),
                             null,
                             "");
                 }
@@ -298,7 +584,7 @@ abstract class AuthHelper {
                 public FusabaseUser getUser() {
                     return new FusabaseUserImpl(userData,
                             authHelper.getFusabaseAuth(),
-                            "");
+                            null);
                 }
             };
 

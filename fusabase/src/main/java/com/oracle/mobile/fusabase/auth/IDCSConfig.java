@@ -30,44 +30,34 @@ import androidx.annotation.NonNull;
 
 class IDCSConfig extends Config {
 
-    protected static String SSO_PATH = "sso";
-    protected static String V1_PATH = "v1";
-    protected static String SDK_PATH = "sdk";
-    protected static String AUTHENTICATE_PATH = "authenticate";
     protected static String OAUTH2_PATH = "oauth2";
-    protected static String TOKEN_PATH = "token";
-    protected static String ME_PATH = "Me";
-    protected static String ADMIN_PATH = "admin";
+    protected static String V1_PATH = "v1";
     protected static String USER_LOGOUT_PATH = "userlogout";
-    protected static String REVOKE_PATH = "revoke";
-    protected static String ME_PASSWORD_RESET_REQUESTOR_PATH = "MePasswordResetRequestor";
-    protected static String ME_PASSWORD_RESETTER_PATH = "MePasswordResetter";
-    protected static String USER_TOKEN_VALIDATOR_PATH = "UserTokenValidator";
-    protected static String ME_PASSWORD_CHANGER_PATH = "MePasswordChanger";
-    protected static String ME_EMAIL_VERIFIER = "MeEmailVerifier";
-    protected static String TOKEN_EXCHANGE_PATH = "tokenExchange";
-    @NonNull
-    public final String clientId;
-    @NonNull
-    public final String clientSecret;
+    protected static String AUTHORIZE_SNAPSHOT_PATH = "authorizeSnapshot";
+
     @NonNull
     public final String idcsDomainURL;
+
     IDCSConfig(@NonNull String appId,
                @NonNull String projectId,
                @NonNull String authType,
-               @NonNull String clientSecret,
-               @NonNull String clientId,
                @NonNull String domainURL,
-               @NonNull String idcsDomainURL,
-               @NonNull String unusedSelfRegistrationProfile) {
+               @NonNull String idcsDomainURL) {
         super(authType, appId, projectId, domainURL);
-        this.idcsDomainURL = idcsDomainURL;
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
+        this.idcsDomainURL = normalizeIdcsDomainURL(idcsDomainURL);
     }
 
     @NonNull
     public String getIdcsDomainURL() {
         return this.idcsDomainURL;
+    }
+
+    @NonNull
+    private static String normalizeIdcsDomainURL(@NonNull String value) {
+        String trimmed = value.trim();
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
     }
 }

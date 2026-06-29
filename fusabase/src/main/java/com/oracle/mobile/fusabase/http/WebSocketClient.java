@@ -28,18 +28,12 @@ package com.oracle.mobile.fusabase.http;
 
 import androidx.annotation.NonNull;
 
-import com.oracle.mobile.fusabase.FusabaseApp;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Queue;
 import java.util.concurrent.TimeUnit;
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionSpec;
 import okhttp3.OkHttpClient;
@@ -54,9 +48,10 @@ public class WebSocketClient {
     private final static String TAG = "fusabase";
     private final static int TIMEOUT = 4*60*1000;
     private final OkHttpClient client;
-    private WebSocket webSocket;
-    private State state;
+    private volatile WebSocket webSocket;
+    private volatile State state;
     private final WebSocketCallback webSocketCallback;
+    private final Queue<String> pendingMessages;
 
     public enum State {
         CONNECTING,
@@ -75,14 +70,10 @@ public class WebSocketClient {
                 .readTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
                 .connectionSpecs(Arrays.asList(spec, ConnectionSpec.CLEARTEXT));
 
-        // Check global setting for self-signed certificates
-        if (FusabaseApp.allowsSelfSignedCertificates()) {
-            configureSelfSignedCertificates(builder);
-        }
-
         this.client = builder.build();
         this.webSocketCallback = webSocketCallback;
         this.state = State.CLOSED;
+        this.pendingMessages = new ArrayDeque<>();
     }
 
     @NonNull
@@ -101,7 +92,9 @@ public class WebSocketClient {
         webSocket = client.newWebSocket(request, new WebSocketListener() {
             @Override
             public void onOpen(WebSocket webSocket, Response response) {
+                state = State.OPEN;
                 FusabaseLogger.d(TAG, "Connected to WebSocket server!");
+                flushPendingMessages();
                 webSocketCallback.onOpen();
             }
 
@@ -114,6 +107,7 @@ public class WebSocketClient {
 
             @Override
             public void onClosing(WebSocket webSocket, int code, String reason) {
+                state = State.CLOSING;
                 FusabaseLogger.d(TAG, "Closing connection to WebSocket " + reason);
                 webSocketCallback.onClosing();
                 webSocket.close(1000, null);
@@ -121,18 +115,19 @@ public class WebSocketClient {
 
             @Override
             public void onClosed(WebSocket webSocket, int code, String reason) {
+                state = State.CLOSED;
                 FusabaseLogger.d(TAG, "Closed connection to WebSocket " + reason);
                 webSocketCallback.onClosed();
             }
 
             @Override
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                state = State.FAILED;
                 FusabaseLogger.d(TAG, "Failure occureed in connection with WebSocket " + t.getMessage());
                 webSocketCallback.onFailure();
             }
         });
 
-        this.state = State.OPEN;
         return webSocket;
     }
 
@@ -145,65 +140,37 @@ public class WebSocketClient {
         return createWebSocketConnection(request);
     }
 
-    public void sendMessage(String message) {
+    public synchronized void sendMessage(String message) {
         // WebSocket messages may contain sensitive payloads; never log contents.
-        FusabaseLogger.d(TAG, "Sending message through WebSocket (len=" + (message == null ? 0 : message.length()) + ")");
-        webSocket.send(message);
+        if (this.state == State.OPEN && this.webSocket != null) {
+            FusabaseLogger.d(TAG, "Sending message through WebSocket (len=" + (message == null ? 0 : message.length()) + ")");
+            webSocket.send(message);
+            return;
+        }
+
+        if (this.state == State.CONNECTING) {
+            FusabaseLogger.d(TAG, "Queueing WebSocket message until connection opens (len="
+                    + (message == null ? 0 : message.length()) + ")");
+            this.pendingMessages.add(message);
+            return;
+        }
+
+        FusabaseLogger.w(TAG, "Cannot send WebSocket message because connection state is " + this.state);
     }
 
     public void close() {
         if (webSocket != null) {
+            this.state = State.CLOSING;
             webSocket.close(1000, "Client closed connection");
         }
     }
 
-    /**
-     * Configures the OkHttpClient to accept self-signed certificates.
-     * WARNING: This reduces security and should only be used for testing.
-     */
-    private void configureSelfSignedCertificates(OkHttpClient.Builder builder) {
-        try {
-            // Create a trust manager that does not validate certificate chains
-            final TrustManager[] trustAllCerts = new TrustManager[]{
-                    new X509TrustManager() {
-                        @Override
-                        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                            // Accept all client certificates
-                        }
-
-                        @Override
-                        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                            // Accept all server certificates
-                        }
-
-                        @Override
-                        public X509Certificate[] getAcceptedIssuers() {
-                            return new X509Certificate[]{};
-                        }
-                    }
-            };
-
-            // Install the all-trusting trust manager
-            final SSLContext sslContext = SSLContext.getInstance("SSL");
-            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-
-            // Create an all-trusting host name verifier
-            final HostnameVerifier allHostsValid = new HostnameVerifier() {
-                @Override
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            };
-
-            builder.sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
-                   .hostnameVerifier(allHostsValid);
-
-            FusabaseLogger.w(TAG, "WARNING: WebSocketClient configured to accept self-signed certificates. " +
-                    "This reduces security and should only be used for testing.");
-
-        } catch (Exception e) {
-            FusabaseLogger.e(TAG, "Failed to configure self-signed certificate support", e);
-            throw new RuntimeException("Failed to configure SSL for self-signed certificates", e);
+    private synchronized void flushPendingMessages() {
+        while (!this.pendingMessages.isEmpty() && this.webSocket != null) {
+            String message = this.pendingMessages.poll();
+            FusabaseLogger.d(TAG, "Sending queued WebSocket message (len="
+                    + (message == null ? 0 : message.length()) + ")");
+            this.webSocket.send(message);
         }
     }
 

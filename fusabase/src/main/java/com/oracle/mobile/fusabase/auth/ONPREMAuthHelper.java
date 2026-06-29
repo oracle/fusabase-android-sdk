@@ -64,11 +64,6 @@ class ONPREMAuthHelper extends AuthHelper {
         this.auth = auth;
     }
 
-    @Nullable
-    protected JsonObject getFusabaseToken(@NonNull JsonObject authCredential, @NonNull JsonObject profileCredential) throws FusabaseException {
-        return null; // On-prem doesn't need token exchange
-    }
-
     @NonNull
     protected ONPREMConfig getConfig() {
         return this.config;
@@ -101,129 +96,6 @@ class ONPREMAuthHelper extends AuthHelper {
     }
 
     @NonNull
-    protected JsonObject authenticateUser(@NonNull String email,
-                                          @NonNull String password)
-            throws FusabaseException {
-
-        FusabaseLogger.d(TAG, "Sending request to authenticate user to fusabase");
-        JsonObject payload = Json.createObjectBuilder()
-                .add("grant_type", "user_credentials")
-                .add("username", email)
-                .add("password", password)
-                .build();
-
-        HttpRequestHelper requestHelper = new HttpRequestHelper();
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.config.getAppId());
-
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
-                        ONPREMConfig.UNDERSCORE_PATH,
-                        ONPREMConfig.BAAS_SERVICES_PATH,
-                        ONPREMConfig.IDM_PATH,
-                        ONPREMConfig.ON_PREM_PATH,
-                        this.config.getProjectId(),
-                        ONPREMConfig.AUTHENTICATE_REST_EP),
-                "POST",
-                new HashMap<>(),
-                queryParameters,
-                payload.toString());
-
-        HttpResponse response = null;
-
-        try {
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
-            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
-        }
-
-        if (response.getStatus()) {
-            FusabaseLogger.i(TAG, "Authenticated User " + email + " successfully.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
-            return Json.createObjectBuilder()
-                    .add("access_token", result.getString("access_token"))
-                    .add("refresh_token", result.getString("refresh_token"))
-                    .build();
-        }
-
-        FusabaseLogger.e(TAG, "Cannot authenticate user " + email + " . Response code "
-                + response.getCode() + " with the following error " +
-                response.getError());
-
-        if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
-            throw new FusabaseAuthInvalidCredentialsException(
-                    FusabaseAuthException.Code.fromCode(response.getCode()).toString()
-                    , "Authentication failed. Please check your credentials and try again.");
-        throw new FusabaseException("Authentication failed. Please try again later.");
-    }
-
-    @NonNull
-    public JsonObject reloadUser(@NonNull FusabaseUser user) throws FusabaseException {
-        GetTokenResult accessToken = new GetTokenResult(user.userHelper.getIdTokenHelper(true));
-        return this.getUserDetails(accessToken);
-    }
-
-    @NonNull
-    protected JsonObject performCodeExchange (@NonNull String authCode, @NonNull String codeVerifier) throws FusabaseException {
-        FusabaseLogger.d(TAG, "Sending request to exchange authCode and codeVerifier to get access " +
-                "to fusabase");
-
-        JsonObject payload = Json.createObjectBuilder()
-                .add("code", authCode)
-                .add("code_verifier", codeVerifier)
-                .build();
-
-        HttpRequestHelper requestHelper = new HttpRequestHelper();
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.config.getAppId());
-
-
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
-                        ONPREMConfig.UNDERSCORE_PATH,
-                        ONPREMConfig.BAAS_SERVICES_PATH,
-                        ONPREMConfig.IDM_PATH,
-                        ONPREMConfig.ON_PREM_PATH,
-                        this.config.getProjectId(),
-                        ONPREMConfig.GET_REDIRECT_RESULT),
-                "POST",
-                new HashMap<>(),
-                queryParameters,
-                payload.toString());
-
-        HttpResponse response = null;
-
-        try {
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
-            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
-        }
-
-        if (response.getStatus()) {
-            FusabaseLogger.i(TAG, "Successfully exchanged codes with Fusabase backend.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
-            return result;
-        }
-
-        FusabaseLogger.e(TAG, "Cannot exchange code with Fusabase Backend"
-               + " . Response code "
-                + response.getCode() + " with the following error " +
-                response.getError());
-
-        if(response.getCode() == 401 || response.getCode() == 404 || response.getCode() == 403)
-            throw new FusabaseAuthInvalidCredentialsException(
-                    FusabaseAuthException.Code.fromCode(response.getCode()).toString()
-                    , "Authentication failed. Please check your credentials and try again.");
-        throw new FusabaseException("Code exchange failed. Please try again later.");
-    }
-
-    @NonNull
     protected JsonObject signInWithCredentialHelper(@NonNull AuthCredential authCredential,
                                                     boolean link) throws FusabaseException {
         FusabaseLogger.d(TAG, "Sending request to authenticate user with the provided credential " +
@@ -242,14 +114,19 @@ class ONPREMAuthHelper extends AuthHelper {
                         "Unsupported credentials provided for linking.");
             }
 
-            if (this.auth.getCurrentUser() == null) {
+            FusabaseUser currentUser = this.auth.getCurrentUser();
+            if (currentUser == null) {
 
                 FusabaseLogger.d(TAG, "User must be recently logged in for linking provider.");
                 throw new FusabaseAuthException(FusabaseAuthException.Code.UNAUTHENTICATED.toString(),
                     "User must be recently logged in for linking with provider.");
             }
 
-            String authHeader = this.auth.getCurrentUser().userHelper.getAuthorizationHeader();
+            if (authCredential instanceof EmailAuthCredential) {
+                validateEmailCredentialForLinking((EmailAuthCredential) authCredential, currentUser.getEmail());
+            }
+
+            String authHeader = currentUser.userHelper.getAuthorizationHeader();
             if (!authHeader.isEmpty()) {
                 headers.put("Authorization", authHeader);
             }
@@ -257,7 +134,8 @@ class ONPREMAuthHelper extends AuthHelper {
         
         String password = "";
         if (link && authCredential instanceof EmailAuthCredential) {
-            password = ((EmailAuthCredential) authCredential).getPassword();
+            EmailAuthCredential emailAuthCredential = (EmailAuthCredential) authCredential;
+            password = emailAuthCredential.getPassword();
             if (password == null || password.isEmpty()) {
                 throw new FusabaseAuthException(
                     FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
@@ -319,6 +197,30 @@ class ONPREMAuthHelper extends AuthHelper {
         }
     }
 
+    static void validateEmailCredentialForLinking(@NonNull EmailAuthCredential credential,
+                                                  @Nullable String currentUserEmail)
+            throws FusabaseAuthException {
+        String credentialEmail = credential.getEmail();
+        if (credentialEmail == null || credentialEmail.trim().isEmpty()) {
+            throw new FusabaseAuthException(
+                FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                "Email must be provided in EmailAuthCredential for linking.");
+        }
+
+        if (currentUserEmail == null || currentUserEmail.trim().isEmpty()) {
+            throw new FusabaseAuthException(
+                FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                "A user must be logged in for credential linking");
+        }
+
+        if (!credentialEmail.trim().equalsIgnoreCase(currentUserEmail.trim())) {
+            FusabaseLogger.d(TAG, "EmailAuthCredential email does not match the current user email.");
+            throw new FusabaseAuthInvalidCredentialsException(
+                FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
+                "EmailAuthCredential email must match the current user email for linking.");
+        }
+    }
+
     @NonNull
     protected JsonObject socialUnlinkHelper(@NonNull String provider) throws FusabaseException {
         FusabaseLogger.d(TAG, "Sending request to unlink user with the provided credential " +
@@ -334,7 +236,7 @@ class ONPREMAuthHelper extends AuthHelper {
         }
 
         if (this.auth.getCurrentUser() == null ||
-                (provider.equals("epw") && this.auth.getCurrentUser().password == null)) {
+                (provider.equals("epw") && !this.auth.getCurrentUser().hasPassword())) {
 
             FusabaseLogger.d(TAG, "User must be recently logged in for linking provider.");
             throw new FusabaseAuthException(FusabaseAuthException.Code.UNAUTHENTICATED.toString(),
@@ -425,286 +327,4 @@ class ONPREMAuthHelper extends AuthHelper {
 
     }
 
-    @NonNull
-    public JsonObject registerUser(@NonNull String email,
-                                   @NonNull String password)
-            throws FusabaseException {
-
-        FusabaseLogger.d(TAG, "Sending request to register user to fusabase " + email);
-
-        JsonObject payload = Json.createObjectBuilder()
-                .add("first_name", "-")
-                .add("last_name", "-")
-                .add("email", email)
-                .add("password", password)
-                .build();
-
-        HttpRequestHelper requestHelper = new HttpRequestHelper();
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.config.getAppId());
-        FusabaseLogger.d("Creating Network Request to register user");
-
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
-                        ONPREMConfig.UNDERSCORE_PATH,
-                        ONPREMConfig.BAAS_SERVICES_PATH,
-                        ONPREMConfig.IDM_PATH,
-                        ONPREMConfig.ON_PREM_PATH,
-                        this.config.getProjectId(),
-                        ONPREMConfig.SELF_REGISTER_EP),
-                "POST",
-                new HashMap<>(),
-                queryParameters,
-                payload.toString());
-
-        HttpResponse response = null;
-
-        try {
-            FusabaseLogger.d("Sending Network Request to register user");
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
-            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
-        }
-
-        if (response.getStatus()) {
-            FusabaseLogger.i("FusabaseAuth", "Registered User " + email + " successfully.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
-            return Json.createObjectBuilder()
-                    .add("access_token", result.getString("access_token"))
-                    .add("refresh_token", result.getString("refresh_token"))
-                    .build();
-        }
-
-        if(response.getCode() == 400)
-        {
-            throw new FusabaseAuthWeakPasswordException(FusabaseAuthException.Code.INVALID_ARGUMENT.toString(), "The password provided does not meet security requirements. Please choose a stronger password.");
-        }
-
-        FusabaseLogger.e(TAG, "Failed to register user at" +
-                " fusabase with response code " + response.getCode() + " with the following error " +
-                response.getError());
-        throw new FusabaseException("User registration failed. Please try again later.");
-    }
-
-    @NonNull
-    public JsonObject performSignOut(@NonNull String refresh_token)
-            throws FusabaseException {
-        JsonObject result = this.revokeRefreshToken(refresh_token);
-             if(result.containsKey("success"))
-                 FusabaseLogger.d("FusabaseAuth", "User signedOut successfully.");
-             else
-                 FusabaseLogger.e("FusabaseAuth", "User cannot be signed Out.");
-        return result;
-    }
-
-    @NonNull
-    public JsonObject revokeRefreshToken (@NonNull String refresh_token)
-            throws FusabaseException {
-
-        FusabaseLogger.d(TAG, "Sending request to sign out user from fusabase");
-        JsonObject payload = Json.createObjectBuilder()
-                .add("token", refresh_token)
-                .build();
-
-        HttpRequestHelper requestHelper = new HttpRequestHelper();
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.config.getAppId());
-
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
-                        ONPREMConfig.UNDERSCORE_PATH,
-                        ONPREMConfig.BAAS_SERVICES_PATH,
-                        ONPREMConfig.IDM_PATH,
-                        ONPREMConfig.ON_PREM_PATH,
-                        this.config.getProjectId(),
-                        ONPREMConfig.REVOKE_REFRESH_TOKEN),
-                "PUT",
-                new HashMap<>(),
-                queryParameters,
-                payload.toString());
-
-        HttpResponse response = null;
-
-        try {
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
-            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
-        }
-
-        if (response.getStatus()) {
-            FusabaseLogger.i("FusabaseAuth", "Refresh Token revoked successfully.");
-            return Json.createObjectBuilder().add("success", 1).build();
-        }
-
-        FusabaseLogger.e(TAG, "Failed to sign out user from" +
-                " Fusabase with response code " + response.getCode() + " with the following error " +
-                response.getError());
-        throw new FusabaseException("Sign out failed. Please try again later.");
-    }
-
-    @NonNull
-    public JsonObject sendPasswordResetEmailHelper(@NonNull String email)
-            throws FusabaseException {
-
-        FusabaseLogger.d(TAG, "Sending request to send password reset email from fusabase");
-        HttpRequestHelper requestHelper = new HttpRequestHelper();
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.config.getAppId());
-        queryParameters.put("email", email);
-        queryParameters.put("requesttype", "resetpwd");
-
-
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
-                        ONPREMConfig.UNDERSCORE_PATH,
-                        ONPREMConfig.BAAS_SERVICES_PATH,
-                        ONPREMConfig.IDM_PATH,
-                        ONPREMConfig.ON_PREM_PATH,
-                        this.config.getProjectId(),
-                        ONPREMConfig.SEND_PASSWORD_RESET_EMAIL),
-                "GET",
-                headers,
-                queryParameters);
-
-        HttpResponse response = null;
-
-        try {
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
-            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
-        }
-
-        if (response.getStatus()) {
-            FusabaseLogger.i("FusabaseAuth", "Password reset email request sent successfully.");
-            return Json.createObjectBuilder().add("success", 1).build();
-        }
-
-        FusabaseLogger.e(TAG, "Failed to send password reset email request from" +
-                " fusabase with response code " + response.getCode() + " with the following error " +
-                response.getError());
-        throw new FusabaseAuthEmailException(FusabaseAuthException.Code.INVALID_ARGUMENT.toString(),
-                "Unable to send password reset email. Please check the email address and try again.");
-    }
-
-    @NonNull
-    public JsonObject verifyPasswordResetCodeHelper(@NonNull String code)
-            throws FusabaseException {
-
-        FusabaseLogger.d(TAG, "Sending request to verify password reset code from fusabase");
-
-        HttpRequestHelper requestHelper = new HttpRequestHelper();
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.config.getAppId());
-        queryParameters.put("code", code);
-        queryParameters.put("requesttype", "resetpwd");
-
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
-                        ONPREMConfig.UNDERSCORE_PATH,
-                        ONPREMConfig.BAAS_SERVICES_PATH,
-                        ONPREMConfig.IDM_PATH,
-                        ONPREMConfig.ON_PREM_PATH,
-                        this.config.getProjectId(),
-                        ONPREMConfig.VERIFY_PASSWORD_RESET_CODE),
-                "GET",
-                headers,
-                queryParameters);
-
-        HttpResponse response = null;
-
-        try {
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
-            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
-        }
-
-        if (response.getStatus()) {
-            FusabaseLogger.i("FusabaseAuth", "Verify password reset request sent successfully.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
-            return result;
-        }
-
-        FusabaseLogger.e(TAG, "Failed to send verify password reset request " +
-                " at Fusabase with response code " + response.getCode() + " with the following error " +
-                response.getError());
-        throw new FusabaseException("Unable to verify password reset code. Please check the code and try again.");
-    }
-
-    @NonNull
-    public JsonObject confirmPasswordResetHelper(@NonNull String code,
-                                                 @NonNull String newPassword)
-            throws FusabaseException {
-
-        FusabaseLogger.d(TAG, "Sending request to verify password reset code from fusabase");
-
-        String storedEmail = this.readDataFromPreferences(
-                this.auth.getApp().getApplicationContext(), "password_reset_email");
-        if (storedEmail == null || storedEmail.isEmpty()) {
-            throw new FusabaseException("No password reset request found. Please request a password reset first.");
-        }
-
-        JsonObject payload = Json.createObjectBuilder()
-                .add("password", newPassword)
-                .add("code", code)
-                .build();
-
-        HttpRequestHelper requestHelper = new HttpRequestHelper();
-
-        Map<String, String> queryParameters = new HashMap<>();
-        queryParameters.put("apiKey", this.config.getAppId());
-        queryParameters.put("email", storedEmail);
-
-
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-
-        requestHelper.createHttpRequest(Utils.urlBuilder(this.config.getDomainURL(),
-                        ONPREMConfig.UNDERSCORE_PATH,
-                        ONPREMConfig.BAAS_SERVICES_PATH,
-                        ONPREMConfig.IDM_PATH,
-                        ONPREMConfig.ON_PREM_PATH,
-                        this.config.getProjectId(),
-                        ONPREMConfig.CONFIRM_PASSWORD_RESET),
-                "POST",
-                headers,
-                queryParameters,
-                payload.toString());
-
-        HttpResponse response = null;
-
-        try {
-            response = requestHelper.executeRequest();
-        } catch (FusabaseException e) {
-            FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
-            throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
-        }
-
-        if (response.getStatus()) {
-            FusabaseLogger.i("FusabaseAuth", "Confirm password reset email request sent successfully.");
-            JsonReader reader = Json.createReader(new StringReader(response.getResponse()));
-            JsonObject result = reader.readObject();
-            reader.close();
-            return result;
-
-        }
-
-        FusabaseLogger.e(TAG, "Failed to Confirm password reset from" +
-                " Fusabase with response code " + response.getCode() + " with the following error " +
-                response.getError());
-        throw new FusabaseException("Unable to reset password. Please check your reset code and try again.");
-    }
 }

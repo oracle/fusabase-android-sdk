@@ -38,7 +38,9 @@ import com.oracle.mobile.fusabase.FusabaseException;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 import com.oracle.mobile.fusabase.task.Task;
 import com.oracle.mobile.fusabase.task.TaskCompletionSource;
+import com.oracle.mobile.fusabase.utils.SecureString;
 
+import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -54,14 +56,14 @@ public abstract class FusabaseUser implements UserInfo {
 
     protected UserHelper userHelper;
     protected Config config;
-    @Nullable
-    protected final String password;
     protected String displayName;
     protected String email;
     protected String photoUrl;
     protected String phoneNumber;
     protected final FusabaseAuth auth;
     protected FusabaseUser instance;
+    @Nullable
+    private final SecureString password;
 
     /**
      * Loads user data from persistent storage.
@@ -90,12 +92,34 @@ public abstract class FusabaseUser implements UserInfo {
         this.instance = this;
         this.config = auth.getConfig();
         this.auth = auth;
-        this.password = password;
+        this.password = createSecurePassword(password);
         if (Objects.equals(this.config.authType, "idcs")) {
             this.userHelper = new IDCSUserHelper((IDCSConfig) this.config, this);
         } else {
             this.userHelper = new ONPREMUserHelper((ONPREMConfig) this.config, this);
         }
+    }
+
+    @Nullable
+    private SecureString createSecurePassword(@Nullable String password) {
+        if (password == null || password.isEmpty()) {
+            return null;
+        }
+        try {
+            return new SecureString(password);
+        } catch (GeneralSecurityException e) {
+            FusabaseLogger.e(TAG, "Cannot process user credentials.");
+            return null;
+        }
+    }
+
+    @Nullable
+    protected String getPassword() {
+        return this.password == null ? null : this.password.getDecryptedString();
+    }
+
+    protected boolean hasPassword() {
+        return this.password != null && !this.password.isEmpty();
     }
 
     protected abstract @NonNull String getRefreshToken();
@@ -199,9 +223,12 @@ public abstract class FusabaseUser implements UserInfo {
 
         CompletableFuture<?> future = CompletableFuture.supplyAsync(() -> {
             try {
-                JsonObject res = this.userHelper.updatePasswordHelper(this, newPassword, this.password);
+                String currentPassword = getPassword();
+                JsonObject res = this.userHelper.updatePasswordHelper(this, newPassword, currentPassword);
                 taskCompletionSource.setResult(null);
                 return "";
+            } catch (FusabaseAuthRecentLoginRequiredException e) {
+                throw new CompletionException(e);
             } catch (FusabaseException e) {
                 throw new CompletionException(new FusabaseAuthException(FusabaseAuthException.Code.INTERNAL.toString(), "Failed to update password. Please try again."));
             }

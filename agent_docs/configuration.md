@@ -4,7 +4,7 @@ Use `FusabaseOptions` and `FusabaseApp` from `com.oracle.mobile.fusabase` to con
 
 ## Default Android Flow
 
-The Android SDK supports automatic initialization through `FusabaseInitProvider`. In the common case, your app includes `fusabase_config.json`, the build merges config into resources, and the provider initializes the default app at startup.
+The Android SDK supports automatic initialization through `FusabaseInitProvider`. In the common case, your app includes `fusabase-config.json`, the build merges config into resources, and the provider initializes the default app at startup.
 
 Typical consumption pattern:
 
@@ -28,6 +28,7 @@ FusabaseOptions options = new FusabaseOptions.Builder()
     .setSchema("schema")
     .setAuthType("idcs")
     .setAuthId("auth-id")
+    .setIdcsDomainURL("https://example.identity.oracle.com")
     .setObjectsType("dbfs")
     .setStorageBucket("bucket-name")
     .build();
@@ -47,15 +48,13 @@ Important option accessors include:
 - `getAuthType()`
 - `getObjectsType()`
 - `getStorageBucket()`
-- `getClientId()`
-- `getClientSecret()`
+- `getDomainURL()` for IDCS identity-domain logout/session flows
 - `getSchema()`
 - `getApiVersion()`
 - `isUseSocket()`
 - `isEnableLogging()`
 - `getUploadChunkSize()`
 - `getLongPollingInterval()`
-- `allowsSelfSignedCertificates()`
 
 ## Notes
 

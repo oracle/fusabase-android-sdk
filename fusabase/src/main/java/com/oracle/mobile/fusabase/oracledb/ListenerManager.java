@@ -74,8 +74,6 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
     private static final String TAG = "FusabaseOradb";
     /** List of all registered listeners managed by this instance */
     private final List<ListenerData<K, T>> listeners;
-    /** Current count of active listeners */
-    private int listenerCount;
     /** Executor for handling listener operations */
     private final Executor executor;
     /** WebSocket controller for real-time communication */
@@ -99,7 +97,6 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
     ListenerManager(@NonNull FusabaseOracledb oracledb,
                     @NonNull K ref) {
         this.listeners = new CopyOnWriteArrayList<>();
-        this.listenerCount = 0;
         this.executor = Executors.newSingleThreadExecutor();
         this.oracledb = oracledb;
         this.ref = ref;
@@ -150,8 +147,6 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                 options.executor,
                 options.metadataChanges);
 
-        listenerCount++;
-
         listeners.add(listenerData);
 
         if (options.getActivity() != null) {
@@ -195,7 +190,7 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                     }
 
                     // Establish a connection with ORDS
-                    if (!webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.OPEN) ||
+                    if (!webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.OPEN) &&
                         !webSocketController.getWebSocketClient().getState().equals(WebSocketClient.State.CONNECTING) ) {
                         webSocketController.establishWebSocketConnection();
                     } else {
@@ -220,6 +215,9 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                 listenerData.getReference().get(Source.SERVER).addOnCompleteListener(new OnCompleteListener<Snapshot>() {
                     @Override
                     public void onComplete(Task<Snapshot> task) {
+                            if (!listeners.contains(listenerData)) {
+                                return;
+                            }
 
                             if (task.isSuccessful()) {
                                 // Emitting event directly
@@ -253,6 +251,12 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
      */
     protected void removeListener(ListenerData<K, T> listenerData) {
         FusabaseLogger.d(TAG, "Removing listener for reference: " + ref.getPath() + ", listenerId: " + listenerData.getListenerId());
+        boolean removed = this.listeners.remove(listenerData);
+        if (!removed) {
+            FusabaseLogger.d(TAG, "Listener already removed for reference: " + ref.getPath() + ", listenerId: " + listenerData.getListenerId());
+            return;
+        }
+
         // Unsubscribe
         JsonObject queryPayload = createWebSocketPayload();
         JsonObject canonicalQueryPayload = sortJsonObject(queryPayload);
@@ -281,14 +285,10 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
                 }
                 break;
             case LONG_POLLING:
-                // We need to just remove listener
+                // Listener has already been removed, so polling observes the updated count.
                 pollingController.listenersUpdated();
                 break;
         }
-
-
-        listenerCount--;
-        this.listeners.removeIf(listener -> listenerData.getListenerId() == listener.getListenerId());
     }
 
     protected List<ListenerData<K, T>> getListeners() {
@@ -296,7 +296,7 @@ class ListenerManager<K extends Reference, T extends Snapshot> {
     }
 
     protected int getListenerCount() {
-        return this.listenerCount;
+        return this.listeners.size();
     }
 
     // listenerId is queryId

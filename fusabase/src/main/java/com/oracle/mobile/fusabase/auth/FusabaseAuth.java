@@ -94,11 +94,8 @@ public class FusabaseAuth {
                         app.fusabaseOptions.getAppId(),
                         app.fusabaseOptions.getProjectId(),
                         app.fusabaseOptions.getAuthType(),
-                        app.fusabaseOptions.getClientSecret(),
-                        app.fusabaseOptions.getClientId(),
                         app.fusabaseOptions.getOrdsHost(),
-                        app.fusabaseOptions.getDomainURL(),
-                        "");
+                        app.fusabaseOptions.getDomainURL());
                 this.authHelper = new IDCSAuthHelper((IDCSConfig) this.config, this);
                 break;
             default:
@@ -115,7 +112,7 @@ public class FusabaseAuth {
                                         getLoggedInUserExists(app.getApplicationContext()),
                                         PREFERENCES_NAME),
                         this,
-                        "");
+                        null);
                 this.informAuthSubscribers();
                 this.informIdTokenSubscribers();
             } catch (FusabaseException e)
@@ -498,9 +495,12 @@ public class FusabaseAuth {
                     @Nullable
                     @Override
                     public FusabaseUser getUser() {
+                        String password = credential instanceof EmailAuthCredential
+                            ? ((EmailAuthCredential) credential).getPassword()
+                            : null;
                         return new FusabaseUserImpl(userData,
                             authHelper.getFusabaseAuth(),
-                            "");
+                            password);
                     }
                 };
 
@@ -627,7 +627,7 @@ public class FusabaseAuth {
             public FusabaseUser getUser() {
                 return new FusabaseUserImpl(userData,
                     authHelper.getFusabaseAuth(),
-                    "");
+                    null);
             }
         };
         return result;

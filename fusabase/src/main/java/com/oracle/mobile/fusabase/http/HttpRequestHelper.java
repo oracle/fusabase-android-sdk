@@ -28,23 +28,14 @@ package com.oracle.mobile.fusabase.http;
 
 import androidx.annotation.NonNull;
 
-import com.oracle.mobile.fusabase.FusabaseApp;
 import com.oracle.mobile.fusabase.FusabaseException;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
 
 import java.io.IOException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.Locale;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionSpec;
 import okhttp3.HttpUrl;
@@ -204,9 +195,6 @@ public class HttpRequestHelper {
         this.httpClient = createHttpClient(retries);
     }
 
-    /**
-     * Creates an OkHttpClient configured based on the global self-signed certificate setting.
-     */
     private OkHttpClient createHttpClient(int retries) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .addInterceptor(new ExponentialBackoffInterceptor(retries, 100));
@@ -216,61 +204,7 @@ public class HttpRequestHelper {
                 .build();
         builder.connectionSpecs(Arrays.asList(spec, ConnectionSpec.CLEARTEXT));
 
-        // Check global setting for self-signed certificates
-        if (FusabaseApp.allowsSelfSignedCertificates()) {
-            configureSelfSignedCertificates(builder);
-        }
-
         return builder.build();
-    }
-
-    /**
-     * Configures the OkHttpClient to accept self-signed certificates.
-     * WARNING: This reduces security and should only be used for testing.
-     */
-    private void configureSelfSignedCertificates(OkHttpClient.Builder builder) {
-        try {
-            // Create a trust manager that does not validate certificate chains
-            final TrustManager[] trustAllCerts = new TrustManager[]{
-                    new X509TrustManager() {
-                        @Override
-                        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                            // Accept all client certificates
-                        }
-
-                        @Override
-                        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                            // Accept all server certificates
-                        }
-
-                        @Override
-                        public X509Certificate[] getAcceptedIssuers() {
-                            return new X509Certificate[]{};
-                        }
-                    }
-            };
-
-            // Install the all-trusting trust manager
-            final SSLContext sslContext = SSLContext.getInstance("SSL");
-            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-
-            // Create an all-trusting host name verifier
-            final HostnameVerifier allHostsValid = new HostnameVerifier() {
-                @Override
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            };
-
-            builder.sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
-                   .hostnameVerifier(allHostsValid);
-
-            FusabaseLogger.w(TAG, "WARNING: HttpRequestHelper configured to accept self-signed certificates. " +
-                    "This reduces security and should only be used for testing.");
-
-        } catch (Exception e) {
-            FusabaseLogger.e(TAG, "Failed to configure self-signed certificate support", e);
-        }
     }
 
     /* Create request with url and body */

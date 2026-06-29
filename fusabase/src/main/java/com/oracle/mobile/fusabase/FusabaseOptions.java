@@ -28,7 +28,6 @@ package com.oracle.mobile.fusabase;
 
 import androidx.annotation.NonNull;
 
-import com.oracle.mobile.fusabase.models.IDCSOptions;
 import com.oracle.mobile.fusabase.models.Options;
 
 import java.util.Objects;
@@ -172,24 +171,6 @@ public class FusabaseOptions {
     }
 
     /**
-     * Gets the client ID.
-     *
-     * @return The client ID.
-     */
-    public String getClientId() {
-        return this.options.getClientId();
-    }
-
-    /**
-     * Gets the client secret.
-     *
-     * @return The client secret.
-     */
-    public String getClientSecret() {
-        return this.options.getClientSecret();
-    }
-
-    /**
      * Gets the schema.
      *
      * @return The schema.
@@ -241,20 +222,6 @@ public class FusabaseOptions {
      */
     public long getLongPollingInterval() {
         return this.options.getLongPollingInterval();
-    }
-
-    /**
-     * Gets the allowsSelfSignedCertificates config. Returns true if self-signed certificates
-     * are allowed for testing purposes, else false for secure production use.
-     * <p>
-     * <strong>WARNING:</strong> This option should only be enabled for testing and development.
-     * Allowing self-signed certificates reduces security and should never be used in production.
-     * </p>
-     *
-     * @return The allowsSelfSignedCertificates setting
-     */
-    public boolean allowsSelfSignedCertificates() {
-        return this.options.allowsSelfSignedCertificates();
     }
 
     /**
@@ -399,13 +366,13 @@ public class FusabaseOptions {
         }
 
         /**
-         * Sets the IDCS options.
+         * Sets the IDCS domain URL.
          *
-         * @param idcsOptions The IDCS options.
+         * @param idcsDomainURL The IDCS domain URL.
          * @return This builder instance.
          */
-        public Builder setIDCSOptions(@NonNull IDCSOptions idcsOptions) {
-            optionsBuilder.setIDCSOptions(idcsOptions);
+        public Builder setIdcsDomainURL(@NonNull String idcsDomainURL) {
+            optionsBuilder.setIdcsDomainURL(idcsDomainURL);
             return this;
         }
 
@@ -428,21 +395,6 @@ public class FusabaseOptions {
          */
         public Builder setLongPollingInterval(long longPollingInterval) {
             optionsBuilder.setLongPollingInterval(longPollingInterval);
-            return this;
-        }
-
-        /**
-         * Sets whether self-signed certificates are allowed for testing purposes.
-         * <p>
-         * <strong>WARNING:</strong> This should only be set to true for testing and development.
-         * Allowing self-signed certificates reduces security and should never be used in production.
-         * </p>
-         *
-         * @param allowsSelfSignedCertificates true to allow self-signed certificates, false for secure production use
-         * @return This builder instance.
-         */
-        public Builder setAllowsSelfSignedCertificates(boolean allowsSelfSignedCertificates) {
-            optionsBuilder.setAllowsSelfSignedCertificates(allowsSelfSignedCertificates);
             return this;
         }
 
