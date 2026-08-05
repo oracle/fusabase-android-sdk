@@ -517,6 +517,9 @@ public class FusabaseAuth {
 
             } catch (Exception e) {
                 FusabaseLogger.e(TAG, "Exception encountered while performing signInWithCredential operation");
+                if (e instanceof FusabaseAuthMultiFactorException) {
+                    throw new CompletionException(e);
+                }
                 Exception exception = e;
                 if(!(exception instanceof FusabaseOracledbException))
                     exception = new FusabaseNetworkException(exception.getMessage() == null ?
@@ -717,6 +720,9 @@ public class FusabaseAuth {
                 this.informIdTokenSubscribers();
 
             } catch (FusabaseException e) {
+                if (e instanceof FusabaseAuthMultiFactorException) {
+                    throw new CompletionException(e);
+                }
                 throw new CompletionException(new FusabaseAuthException(FusabaseAuthException.Code.INTERNAL.toString(), "Sign in failed. Please check your credentials and try again."));
             }
 

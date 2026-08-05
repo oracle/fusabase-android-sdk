@@ -104,7 +104,24 @@ abstract class AuthHelper {
                 apiKeyQueryParameters(),
                 payload.toString());
 
+        if (isMfaContinuationResponse(result)) {
+            throw new FusabaseAuthMultiFactorException(result, getFusabaseAuth());
+        }
+
         return normalizeAuthTokenResponse(result);
+    }
+
+    static boolean isMfaContinuationResponse(@NonNull JsonObject response) {
+        if (!response.containsKey("challengeId") || !response.containsKey("mfaSessionToken")) {
+            return false;
+        }
+        boolean hasFactors = response.containsKey("factors")
+                && response.get("factors").getValueType() == JsonValue.ValueType.ARRAY;
+        if (hasFactors && ("MFA_REQUIRED".equals(response.getString("message", ""))
+                || "MFA_REQUIRED".equals(response.getString("error", "")))) {
+            return true;
+        }
+        return false;
     }
 
     @NonNull
@@ -200,13 +217,17 @@ abstract class AuthHelper {
                 .add("code_verifier", codeVerifier)
                 .build();
 
-        return executeAuthJsonRequest(
+        JsonObject result = executeAuthJsonRequest(
                 "Exchanging redirect code through ORDS",
                 Config.GET_REDIRECT_RESULT,
                 "POST",
                 new HashMap<>(),
                 apiKeyQueryParameters(),
                 payload.toString());
+        if (isMfaContinuationResponse(result)) {
+            throw new FusabaseAuthMultiFactorException(result, getFusabaseAuth());
+        }
+        return result;
     }
 
     @NonNull
@@ -488,7 +509,6 @@ abstract class AuthHelper {
         } else {
             FusabaseLogger.d(TAG, "Earlier login attempt data present. Completing login.");
 
-            // Clean earlier login data
             try {
                 authHelper.deleteDataFromPreferences(authHelper
                                 .getFusabaseAuth()
@@ -523,7 +543,6 @@ abstract class AuthHelper {
             String response = URLDecoder.decode(data.toString());
             String authCode = response.substring(response.indexOf("code=") + "code=".length());
 
-            // authCode is sensitive; never log it.
             FusabaseLogger.d(TAG, "Received authCode (redacted)");
 
             JsonObject responseObject;
@@ -546,7 +565,11 @@ abstract class AuthHelper {
                                         tokensForUser.getString("access_token"),
                                         "password")));
             } catch (FusabaseException e) {
-                FusabaseLogger.e("Cannot perform code exchange or error parsing the token."+ e.getMessage());
+                FusabaseLogger.w(TAG, "Social code exchange failed.");
+                if (future != null) {
+                    future.completeExceptionally(e);
+                    return;
+                }
                 throw new CompletionException(e);
             }
 
@@ -588,7 +611,6 @@ abstract class AuthHelper {
                 }
             };
 
-            // No need to set current User as the values are same
             if(!link) {
                 authHelper.getFusabaseAuth().currentUser = result.getUser();
 
