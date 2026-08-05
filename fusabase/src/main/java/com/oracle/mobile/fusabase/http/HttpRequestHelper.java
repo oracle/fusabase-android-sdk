@@ -28,14 +28,20 @@ package com.oracle.mobile.fusabase.http;
 
 import androidx.annotation.NonNull;
 
+import com.oracle.mobile.fusabase.FusabaseApp;
 import com.oracle.mobile.fusabase.FusabaseException;
+import com.oracle.mobile.fusabase.apptrust.FusabaseAppTrust;
+import com.oracle.mobile.fusabase.apptrust.AppTrustToken;
 import com.oracle.mobile.fusabase.logger.FusabaseLogger;
+import com.oracle.mobile.fusabase.task.Tasks;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Locale;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import okhttp3.ConnectionSpec;
 import okhttp3.HttpUrl;
@@ -54,6 +60,13 @@ import okio.BufferedSource;
 public class HttpRequestHelper {
 
     private final static String TAG = "FusabaseHTTP";
+    private static final String APP_TRUST_HEADER = "X-BAAS-AppCheck";
+    private static final String BAAS_SERVICES_PATH = "/_/baas-services/";
+    private static final String APP_TRUST_PATH = "/_/baas-services/appcheck/";
+    private static final String APP_TRUST_REJECTION_HINT = "appcheck";
+    private static final int APP_TRUST_REJECTION_STATUS = 401;
+    private static final long APP_TRUST_REJECTION_BODY_LIMIT_BYTES = 65_536L;
+    private static final long APP_TRUST_REFRESH_TIMEOUT_SECONDS = 30L;
 
     // Never log request bodies. Redact sensitive headers and query parameters.
     private static final String BODY_OMITTED = "<omitted>";
@@ -76,7 +89,8 @@ public class HttpRequestHelper {
             "cookie",
             "set-cookie",
             "x-api-key",
-            "proxy-authorization"
+            "proxy-authorization",
+            "x-baas-appcheck"
     };
 
     private static boolean isSensitiveQueryParamName(@NonNull String name) {
@@ -310,6 +324,7 @@ public class HttpRequestHelper {
                     requestBuilder.header(entry.getKey(), entry.getValue());
                 }
             }
+            addAppTrustHeader(requestBuilder, httpUrlBuilder.build());
         } catch (Exception e)
         {
             FusabaseLogger.d("HTTPHelper", e.getMessage());
@@ -357,6 +372,81 @@ public class HttpRequestHelper {
     }
 
     /**
+     * Adds a cached App Trust token only to protected BaaS requests. The nonce and attestation
+     * exchange endpoints must remain unauthenticated so a token can be minted in the first place.
+     */
+    private static void addAppTrustHeader(@NonNull Request.Builder requestBuilder, @NonNull HttpUrl url) {
+        if (!isAppTrustProtectedRequest(url)) {
+            return;
+        }
+        try {
+            AppTrustToken token = FusabaseAppTrust.getInstance(FusabaseApp.getInstance())
+                    .getCachedTokenIfValid();
+            if (token != null) {
+                requestBuilder.header(APP_TRUST_HEADER, token.getToken());
+            }
+        } catch (IllegalStateException ignored) {
+            // Fusabase has not been initialized; request construction remains backward compatible.
+        }
+    }
+
+    private static boolean isAppTrustProtectedRequest(@NonNull HttpUrl url) {
+        String path = url.encodedPath();
+        return path.contains(BAAS_SERVICES_PATH) && !path.contains(APP_TRUST_PATH);
+    }
+
+    /**
+     * Returns whether the response is the explicit App Trust rejection that can be retried safely.
+     *
+     * <p>The body is inspected only up to a bounded size and is never logged. Other 401 responses
+     * are authentication failures and must be returned to the caller unchanged.</p>
+     */
+    static boolean isAppTrustRejection(@NonNull Response response) {
+        if (response.code() != APP_TRUST_REJECTION_STATUS) {
+            return false;
+        }
+        try {
+            return response.peekBody(APP_TRUST_REJECTION_BODY_LIMIT_BYTES).string()
+                    .toLowerCase(Locale.US).contains(APP_TRUST_REJECTION_HINT);
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    /** Executes a request and retries it once after an explicit App Trust rejection. */
+    private Response executeWithAppTrustRetry(@NonNull Request initialRequest) throws IOException {
+        Response response = httpClient.newCall(initialRequest).execute();
+        if (!isAppTrustProtectedRequest(initialRequest.url()) || !isAppTrustRejection(response)) {
+            return response;
+        }
+
+        Request retryRequest = refreshAppTrustToken(initialRequest);
+        if (retryRequest == null) {
+            return response;
+        }
+
+        response.close();
+        FusabaseLogger.i(TAG, "Retrying request after App Trust token refresh");
+        return httpClient.newCall(retryRequest).execute();
+    }
+
+    /** Forces one bounded App Trust token refresh and attaches the resulting token to a retry. */
+    private Request refreshAppTrustToken(@NonNull Request initialRequest) {
+        try {
+            FusabaseLogger.i(TAG, "Refreshing App Trust token after App Trust rejection");
+            AppTrustToken token = Tasks.await(
+                    FusabaseAppTrust.getInstance(FusabaseApp.getInstance()).getToken(true),
+                    APP_TRUST_REFRESH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            return initialRequest.newBuilder().header(APP_TRUST_HEADER, token.getToken()).build();
+        } catch (ExecutionException | TimeoutException | IllegalStateException ignored) {
+            return null;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+    }
+
+    /**
      * Logs all details of the HTTP request for debugging purposes.
      */
     private void logHttpRequest() {
@@ -391,7 +481,7 @@ public class HttpRequestHelper {
             // Log HTTP request details
             logHttpRequest();
 
-            Response response = this.httpClient.newCall(this.request).execute();
+            Response response = executeWithAppTrustRetry(this.request);
 
             if (!response.isSuccessful()) {
                 int responseCode = response.code();
@@ -437,7 +527,7 @@ public class HttpRequestHelper {
             // Log HTTP request details
             logHttpRequest();
 
-            Response response = this.httpClient.newCall(this.request).execute();
+            Response response = executeWithAppTrustRetry(this.request);
 
             if (!response.isSuccessful()) {
                 int responseCode = response.code();

@@ -161,6 +161,7 @@ dependencies {
     // Networking & JSON
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
     implementation("org.glassfish:jakarta.json:2.0.1")
+    implementation("com.google.android.play:integrity:1.4.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
