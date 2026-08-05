@@ -41,7 +41,10 @@ import com.oracle.mobile.fusabase.task.TaskCompletionSource;
 import com.oracle.mobile.fusabase.utils.SecureString;
 
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -62,6 +65,7 @@ public abstract class FusabaseUser implements UserInfo {
     protected String phoneNumber;
     protected final FusabaseAuth auth;
     protected FusabaseUser instance;
+    protected List<MultiFactorInfo> enrolledFactors = new ArrayList<>();
     @Nullable
     private final SecureString password;
 
@@ -98,6 +102,26 @@ public abstract class FusabaseUser implements UserInfo {
         } else {
             this.userHelper = new ONPREMUserHelper((ONPREMConfig) this.config, this);
         }
+    }
+
+    @NonNull
+    List<MultiFactorInfo> getEnrolledFactorsInternal() {
+        return new ArrayList<>(this.enrolledFactors);
+    }
+
+    void setEnrolledFactorsInternal(@NonNull List<MultiFactorInfo> factors) {
+        this.enrolledFactors = new ArrayList<>(factors);
+    }
+
+    /**
+     * Returns the multi-factor authentication manager for this signed-in user.
+     *
+     * <p>Use the returned manager to retrieve, enroll, and unenroll MFA factors.
+     *
+     * @return the user's multi-factor authentication manager
+     */
+    public @NonNull MultiFactor getMultiFactor() {
+        return new MultiFactorImpl(this);
     }
 
     @Nullable

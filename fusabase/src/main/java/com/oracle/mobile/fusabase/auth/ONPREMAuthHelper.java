@@ -80,7 +80,7 @@ class ONPREMAuthHelper extends AuthHelper {
             @NonNull JsonObject tokenResult) {
 
         String accessToken = tokenResult.getString("access_token");
-        String refreshToken = tokenResult.getString("refresh_token");
+        String refreshToken = tokenResult.getString("refresh_token", "");
         JsonObject userDetails = this.getUserDetails(new GetTokenResult(new IdToken(accessToken, "base")));
 
         FusabaseLogger.i(TAG, "Fetched details for user " +
@@ -192,6 +192,9 @@ class ONPREMAuthHelper extends AuthHelper {
                     , "Authentication failed. Please check your credentials and try again.");
         throw new FusabaseException("Sign in failed. Please try again later.");
         } catch (FusabaseException e) {
+            if (e instanceof FusabaseAuthMultiFactorException) {
+                throw e;
+            }
             FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
             throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
         }
