@@ -1,6 +1,6 @@
-# Oracle® Backend for Firebase (Fusabase) Android SDK
+# Oracle® Backend with Firebase APIs (Fusabase) Android SDK
 
-An Android SDK for Oracle Backend for Firebase (Fusabase) that provides authentication, document database, storage, and vector search capabilities.
+An Android SDK for Oracle Backend with Firebase APIs (Fusabase) that provides authentication, document database, storage, and vector search capabilities.
 
 - Authentication (email/password and federated providers), user profile APIs
 - OracleDB document APIs (collections, documents, queries, duality views, transactions, batch)
@@ -8,7 +8,7 @@ An Android SDK for Oracle Backend for Firebase (Fusabase) that provides authenti
 - Storage APIs (upload/download, metadata, listing)
 - Automatic initialization from `fusabase-config.json` via a Gradle plugin
 
-This Oracle Backend for Firebase Android SDK follows the Firebase design, API patterns, and rules-based authorization model. Its SDK interfaces are designed to mirror the Firebase SDK interfaces so developers can move across backends with minimal changes. This Oracle Backend for Firebase Android SDK is a distinct Oracle offering.
+This Oracle Backend with Firebase APIs Android SDK follows the Firebase design, API patterns, and rules-based authorization model. Its SDK interfaces are designed to mirror the Firebase SDK interfaces so developers can move across backends with minimal changes. This Oracle Backend with Firebase APIs Android SDK is a distinct Oracle offering.
 
 ## Requirements
 
@@ -380,7 +380,7 @@ Reports are generated under `fusabase/build/reports/jacoco`.
  
 ## Trademarks
 
-Firebase is a trademark of Google LLC.  Use of the Firebase name here is solely to describe the design patterns and SDK interfaces that Oracle Backend for Firebase follows for developer familiarity and ease of migration; it does not imply any affiliation with or endorsement by Google.
+Firebase is a trademark of Google LLC.  Use of the Firebase name here is solely to describe the design patterns and SDK interfaces that Oracle Backend with Firebase APIs follows for developer familiarity and ease of migration; it does not imply any affiliation with or endorsement by Google.
 
 ## Contributing
 
