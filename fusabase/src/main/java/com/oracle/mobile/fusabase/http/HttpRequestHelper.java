@@ -90,6 +90,7 @@ public class HttpRequestHelper {
             "set-cookie",
             "x-api-key",
             "proxy-authorization",
+            "x-authz",
             "x-baas-appcheck"
     };
 

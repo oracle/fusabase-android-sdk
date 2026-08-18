@@ -62,7 +62,7 @@ class MfaServiceHelper {
     }
 
     interface AuthHeaderProvider {
-        @NonNull String getAuthorizationHeader();
+        @NonNull String getAuthorizationHeader() throws FusabaseException;
     }
 
     private static final HttpExecutor DEFAULT_HTTP_EXECUTOR = (url, method, headers, query, payload) -> {
@@ -96,9 +96,9 @@ class MfaServiceHelper {
         this(config, () -> authorizationHeader, httpExecutor);
     }
 
-    private MfaServiceHelper(@NonNull Config config,
-                             @NonNull AuthHeaderProvider authHeaderProvider,
-                             @NonNull HttpExecutor httpExecutor) {
+    MfaServiceHelper(@NonNull Config config,
+                     @NonNull AuthHeaderProvider authHeaderProvider,
+                     @NonNull HttpExecutor httpExecutor) {
         this.config = config;
         this.authHeaderProvider = authHeaderProvider;
         this.httpExecutor = httpExecutor;
@@ -249,21 +249,37 @@ class MfaServiceHelper {
 
     @NonNull private Map<String, String> authHeaders() throws FusabaseException {
         Map<String, String> headers = optionalAuthHeaders();
-        if (!headers.containsKey("Authorization")) {
+        String authHeaderName = isIdcs() ? "X-AUTHZ" : "Authorization";
+        if (!headers.containsKey(authHeaderName)) {
             throw new FusabaseAuthException(FusabaseAuthException.Code.UNAUTHENTICATED.toString(),
                     "User must be signed in for MFA operations.");
         }
         return headers;
     }
 
-    @NonNull private Map<String, String> optionalAuthHeaders() {
+    @NonNull private Map<String, String> optionalAuthHeaders() throws FusabaseException {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         String authHeader = authHeaderProvider.getAuthorizationHeader();
         if (!authHeader.isEmpty()) {
-            headers.put("Authorization", authHeader);
+            if (isIdcs()) {
+                String accessToken = rawAccessToken(authHeader);
+                if (!accessToken.isEmpty()) {
+                    headers.put("X-AUTHZ", accessToken);
+                }
+            } else {
+                headers.put("Authorization", authHeader);
+            }
         }
         return headers;
+    }
+
+    @NonNull private static String rawAccessToken(@NonNull String authorizationHeader) {
+        String value = authorizationHeader.trim();
+        String bearerPrefix = "Bearer ";
+        return value.regionMatches(true, 0, bearerPrefix, 0, bearerPrefix.length())
+                ? value.substring(bearerPrefix.length()).trim()
+                : value;
     }
 
     private boolean isIdcs() {

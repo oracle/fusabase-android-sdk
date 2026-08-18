@@ -132,8 +132,9 @@ abstract class AuthHelper {
         queryParameters.put("email", email);
         queryParameters.put("requesttype", "resetpwd");
 
-        executeAuthJsonRequest(
+        executeAuthStatusRequestToUrl(
                 "Sending password reset email through ORDS",
+                this.getConfig().getAuthBaseEndpoint(Config.SEND_PASSWORD_RESET_EMAIL),
                 Config.SEND_PASSWORD_RESET_EMAIL,
                 "GET",
                 jsonHeaders(),
@@ -371,19 +372,23 @@ abstract class AuthHelper {
 
         HttpResponse response;
         try {
-            response = requestHelper.executeRequest();
+            response = requestHelper.executeRequestStreaming();
         } catch (FusabaseException e) {
             FusabaseLogger.e(TAG, "Network error encountered while performing the operation");
             throw new FusabaseNetworkException("Network error encountered due to " + e.getCause());
         }
 
-        if (response.getStatus()) {
-            return Json.createObjectBuilder().add("success", 1).build();
-        }
+        try {
+            if (response.getStatus()) {
+                return Json.createObjectBuilder().add("success", 1).build();
+            }
 
-        FusabaseLogger.e(TAG, logAction + " failed with response code "
-                + response.getCode() + " with the following error " + response.getError());
-        throw buildAuthRequestException(endpoint, response);
+            FusabaseLogger.e(TAG, logAction + " failed with response code "
+                    + response.getCode() + " with the following error " + response.getError());
+            throw buildAuthRequestException(endpoint, response);
+        } finally {
+            response.close();
+        }
     }
 
     @NonNull

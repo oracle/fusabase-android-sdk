@@ -73,6 +73,15 @@ public class HttpResponse {
         return responseBody != null ? responseBody.byteStream() : null;
     }
 
+    /**
+     * Closes the underlying response body, if one exists.
+     */
+    public void close() {
+        if (responseBody != null) {
+            responseBody.close();
+        }
+    }
+
     public String getError() {
         return error;
     }

@@ -65,7 +65,7 @@ final class MultiFactorInfoFactory {
         if ("sms".equals(value) || "twilio".equals(value)) {
             return PhoneMultiFactorGenerator.FACTOR_ID;
         }
-        if ("totp".equals(value)) {
+        if ("baas_totp".equals(value)) {
             return TotpMultiFactorGenerator.FACTOR_ID;
         }
         return value;
