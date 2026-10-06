@@ -60,7 +60,6 @@ Important option accessors include:
 
 - The SDK uses Java-style getter methods on `FusabaseOptions`.
 - The auto-init path is Android-specific and important for app code generation.
-- Named app instances are supported through `FusabaseApp.initializeApp(context, options, name)`.
 
 ## Related Docs
 

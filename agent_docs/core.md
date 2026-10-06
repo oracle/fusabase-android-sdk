@@ -27,13 +27,6 @@ FusabaseApp app = FusabaseApp.getInstance();
 FusabaseApp app = FusabaseApp.initializeApp(context, options);
 ```
 
-### Named app
-
-```java
-FusabaseApp analyticsApp = FusabaseApp.initializeApp(context, options, "analytics");
-FusabaseApp sameApp = FusabaseApp.getInstance("analytics");
-```
-
 ### Inspect configuration
 
 ```java

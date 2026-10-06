@@ -1,6 +1,6 @@
-# Oracle Backend for Firebase Android SDK Guide for Coding Agents
+# Oracle Backend with Firebase APIs (Fusabase) Android SDK Guide for Coding Agents
 
-This repository contains the Oracle Backend for Firebase Android SDK. The product name is **Oracle Backend for Firebase**. The developer-facing Android package prefix is **`com.oracle.mobile.fusabase`**.
+This repository contains the Oracle Backend with Firebase APIs (Fusabase) Android SDK. The developer-facing Android package prefix is **`com.oracle.mobile.fusabase`**.
 
 Use this file as background context when you are scanning the SDK or generating Android application code that consumes it.
 
@@ -31,7 +31,9 @@ The Android SDK is published from the `:fusabase` library module and exposes pub
 
 ## Configuration
 
-Android apps typically initialize from `fusabase_config.json`, which is merged into app resources and read automatically by `FusabaseInitProvider`.
+Android apps typically initialize from `fusabase-config.json`. The Fusabase Gradle plugin converts this file into app resources that `FusabaseInitProvider` reads at startup.
+
+IDCS authentication also requires `idcs_domain_url`.
 
 High-level configuration fields include:
 
@@ -45,10 +47,11 @@ High-level configuration fields include:
 - `objs_type`
 - `storage_bucket`
 - `api_version`
-- `use_socket`
-- `enable_logging`
+- `useSocket`
+- `enableLogging`
 - `upload_chunk_size`
 - `long_polling_interval`
+- `idcs_domain_url`
 
 Typical setup:
 
