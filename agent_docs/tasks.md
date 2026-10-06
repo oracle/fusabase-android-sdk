@@ -10,7 +10,6 @@ The Android SDK uses its own task abstraction in `com.oracle.mobile.fusabase.tas
 - `OnFailureListener`
 - `OnCompleteListener<T>`
 - `OnCanceledListener`
-- `Tasks`
 
 ## Why This Matters
 
@@ -42,7 +41,6 @@ imageRef.putBytes(fileBytes)
 
 ## Notes
 
-- This task model is part of the public SDK surface.
 - Storage task types add progress and pause/resume controls on top of the base task pattern.
 
 ## Related Docs

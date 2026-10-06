@@ -1,6 +1,17 @@
-# Oracle® Backend for Firebase (Fusabase) Android SDK
+<br />
+<p align="center">
+  <img src="assets/fusabase-color.svg" alt="Fusabase logo" width="180" />
+</p>
 
-An Android SDK for Oracle Backend for Firebase (Fusabase) that provides authentication, document database, storage, and vector search capabilities.
+<h1 align="center">Oracle Backend with Firebase APIs (Fusabase) Android SDK</h1>
+
+<p align="center">
+  <a href="https://docs.oracle.com/en/database/oracle/backend-for-firebase/26.3/index.html">Guides</a>
+  ·
+  <a href="https://livelabs.oracle.com/ords/r/dbpm/livelabs/view-workshop?wid=4402&amp;clear=180,RR&amp;session=15619800424542">Free Workshop</a>
+</p>
+
+An Android SDK for Oracle Backend with Firebase APIs (Fusabase) that provides authentication, document database, storage, and vector search capabilities.
 
 - Authentication (email/password and federated providers), user profile APIs
 - OracleDB document APIs (collections, documents, queries, duality views, transactions, batch)
@@ -8,7 +19,7 @@ An Android SDK for Oracle Backend for Firebase (Fusabase) that provides authenti
 - Storage APIs (upload/download, metadata, listing)
 - Automatic initialization from `fusabase-config.json` via a Gradle plugin
 
-This Oracle Backend for Firebase Android SDK follows the Firebase design, API patterns, and rules-based authorization model. Its SDK interfaces are designed to mirror the Firebase SDK interfaces so developers can move across backends with minimal changes. This Oracle Backend for Firebase Android SDK is a distinct Oracle offering.
+The SDK follows Firebase design and API patterns and uses a rules-based authorization model. Its interfaces mirror the Firebase SDK, helping developers move across backends with minimal changes. Oracle Backend with Firebase APIs is a distinct Oracle offering.
 
 ## Requirements
 
@@ -380,7 +391,7 @@ Reports are generated under `fusabase/build/reports/jacoco`.
  
 ## Trademarks
 
-Firebase is a trademark of Google LLC.  Use of the Firebase name here is solely to describe the design patterns and SDK interfaces that Oracle Backend for Firebase follows for developer familiarity and ease of migration; it does not imply any affiliation with or endorsement by Google.
+Firebase is a trademark of Google LLC. Use of the Firebase name here is solely to describe the design patterns and SDK interfaces that Oracle Backend with Firebase APIs follows for developer familiarity and ease of migration; it does not imply any affiliation with or endorsement by Google.
 
 ## Contributing
 
