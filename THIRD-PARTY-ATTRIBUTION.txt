@@ -1,4 +1,4 @@
-Oracle Backend for Firebase Third-Party License Information
+Oracle Backend with Firebase APIs (Fusabase) Third-Party License Information
 --------------------------------------
 
 This product contains third-party code. Oracle is required to provide the notices for that code.
