@@ -64,6 +64,18 @@ auth.addIdTokenListener(fusabaseAuth -> {
 });
 ```
 
+### Retrieve enrolled MFA factors
+
+`getEnrolledFactors()` retrieves the current user's enrolled factors from the
+authentication server and returns them asynchronously. It also refreshes the SDK cache.
+
+```java
+auth.getCurrentUser().getMultiFactor().getEnrolledFactors()
+    .addOnSuccessListener(factors -> {
+        // Render the current server-side factor list.
+    });
+```
+
 ### Password reset
 
 ```java
@@ -84,14 +96,13 @@ FusabaseOptions options = new FusabaseOptions.Builder()
     .setAppId("app-id")
     .setAuthType("idcs")
     .setAuthId("auth-id")
-    .setIdcsDomainURL("https://example.identity.oracle.com")
     .build();
 
 FusabaseApp app = FusabaseApp.initializeApp(context, options);
 FusabaseAuth auth = FusabaseAuth.getInstance(app);
 ```
 
-Use `setAuthType("onprem")` to point at an on-prem identity-manager backend instead. See `agent_docs/configuration.md` for the full options surface.
+Use `setAuthType("base")` to point at an on-prem identity-manager backend instead. See `agent_docs/configuration.md` for the full options surface.
 
 ## Notes
 

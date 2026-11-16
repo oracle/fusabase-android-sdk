@@ -28,7 +28,6 @@ FusabaseOptions options = new FusabaseOptions.Builder()
     .setSchema("schema")
     .setAuthType("idcs")
     .setAuthId("auth-id")
-    .setIdcsDomainURL("https://example.identity.oracle.com")
     .setObjectsType("dbfs")
     .setStorageBucket("bucket-name")
     .build();

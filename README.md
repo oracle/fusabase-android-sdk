@@ -74,8 +74,7 @@ Example `fusabase-config.json`:
   "api_version": 2,
   "useSocket": true,
   "upload_chunk_size": 1048576,
-  "long_polling_interval": 3000,
-  "idcs_domain_url": "https://idcs-guid.oraclecloud.com"
+  "long_polling_interval": 3000
 }
 ```
 
@@ -136,7 +135,6 @@ FusabaseOptions options = new FusabaseOptions.Builder()
     .setAppId("your-app-id")
     .setAppName("YourApp")
     .setAuthType("idcs")
-    .setIdcsDomainURL("https://idcs-guid.oraclecloud.com")
     .setSchema("YOUR_SCHEMA")
     .setApiVersion("v1")
     .setUseSocket(true)
