@@ -25,6 +25,7 @@
 //-----------------------------------------------------------------------------
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google()
         mavenCentral()
@@ -40,5 +41,9 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "fusabase"
-include(":fusabase")
 include(":fusabase-gradle-plugin")
+include(":fusabase-common")
+include(":fusabase-auth")
+include(":fusabase-oracledb")
+include(":fusabase-storage")
+include(":fusabase-apptrust")

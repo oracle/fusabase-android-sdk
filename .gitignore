@@ -12,7 +12,13 @@
 /.oca
 .DS_Store
 /build
+**/build/
+!build-logic/src/main/kotlin/com/oracle/mobile/fusabase/build/
+!build-logic/src/main/kotlin/com/oracle/mobile/fusabase/build/**
+!build-logic/src/test/kotlin/com/oracle/mobile/fusabase/build/
+!build-logic/src/test/kotlin/com/oracle/mobile/fusabase/build/**
 /captures
+/consumer-fixtures/
 .externalNativeBuild
 .cxx
 local.properties
@@ -20,5 +26,7 @@ local.properties
 /fusabase-gradle-plugin/bin/
 /fusabase/build/
 /fusabase/src/androidTest/
+/fusabase-integration-tests/
 scripts/
+**/release-test-args.properties
 memory-bank/vector-api-implementation-plan.md
