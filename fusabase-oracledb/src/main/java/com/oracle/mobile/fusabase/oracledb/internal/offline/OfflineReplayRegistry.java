@@ -1,0 +1,64 @@
+// Copyright (c) 2015, 2025, Oracle and/or its affiliates.
+
+//-----------------------------------------------------------------------------
+//
+// This software is dual-licensed to you under the Universal Permissive License
+// (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl and Apache License
+// 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose
+// either license.
+//
+// If you elect to accept the software under the Apache License, Version 2.0,
+// the following applies:
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//-----------------------------------------------------------------------------
+
+
+package com.oracle.mobile.fusabase.oracledb.internal.offline;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+
+import com.oracle.mobile.fusabase.oracledb.FusabaseOracledb;
+
+import java.util.Map;
+import java.util.WeakHashMap;
+
+/** Internal registry that connects a database client to its remote replay port. */
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+public final class OfflineReplayRegistry {
+    private static final Map<FusabaseOracledb, RemoteMutationExecutor> EXECUTORS =
+            new WeakHashMap<>();
+
+    private OfflineReplayRegistry() { }
+
+    public static synchronized void register(@NonNull FusabaseOracledb database,
+                                             @NonNull RemoteMutationExecutor executor) {
+        if (database == null || executor == null) {
+            throw new IllegalArgumentException("Offline replay dependencies cannot be null");
+        }
+        EXECUTORS.put(database, executor);
+    }
+
+    @Nullable
+    public static synchronized RemoteMutationExecutor get(
+            @NonNull FusabaseOracledb database) {
+        return EXECUTORS.get(database);
+    }
+
+    public static synchronized void remove(@NonNull FusabaseOracledb database) {
+        EXECUTORS.remove(database);
+    }
+}

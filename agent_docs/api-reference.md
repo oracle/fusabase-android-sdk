@@ -7,7 +7,7 @@ Use Dokka output when you need a fuller view of the public Android SDK surface.
 From the repository root:
 
 ```bash
-./gradlew :fusabase:dokkaHtml
+./gradlew dokkaHtml
 ```
 
 That generates the Dokka site for the Android library module.

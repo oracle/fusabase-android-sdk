@@ -133,18 +133,27 @@ publishing {
         }
     }
 
-    repositories {
-        maven {
-            name = "artifactory"
-            url = uri(project.findProperty("artifactoryUrl")?.toString() ?: System.getenv("ARTIFACTORY_URL") ?: error("Missing Artifactory URL"))
-            credentials {
-                username = project.findProperty("artifactoryUsername")?.toString()
-                    ?: System.getenv("ARTIFACTORY_USERNAME")
-                            ?: error("Missing Artifactory username")
+    val artifactoryUrl = providers.gradleProperty("artifactoryUrl")
+        .orElse(providers.environmentVariable("ARTIFACTORY_URL"))
+        .orNull
+    val artifactoryUsername = providers.gradleProperty("artifactoryUsername")
+        .orElse(providers.environmentVariable("ARTIFACTORY_USERNAME"))
+        .orNull
+    val artifactoryPassword = providers.gradleProperty("artifactoryPassword")
+        .orElse(providers.environmentVariable("ARTIFACTORY_PASSWORD"))
+        .orNull
 
-                password = project.findProperty("artifactoryPassword")?.toString()
-                    ?: System.getenv("ARTIFACTORY_PASSWORD")
-                            ?: error("Missing Artifactory password")
+    if (!artifactoryUrl.isNullOrBlank()
+        && !artifactoryUsername.isNullOrBlank()
+        && !artifactoryPassword.isNullOrBlank()) {
+        repositories {
+            maven {
+                name = "artifactory"
+                url = uri(artifactoryUrl)
+                credentials {
+                    username = artifactoryUsername
+                    password = artifactoryPassword
+                }
             }
         }
     }
